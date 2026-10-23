@@ -15,9 +15,9 @@ import {
 } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "How to Use MiniCourse Wisely",
+  title: "How to Use MiniGuide AI Wisely",
   description:
-    "Practical tips to learn smarter on MiniCourse — build habits, use progress tracking, and get the most from every mini course.",
+    "Practical tips to learn smarter on MiniGuide AI — build habits, use progress tracking, and get the most from every mini course.",
 };
 
 const tips = [
@@ -86,7 +86,7 @@ export default function BlogPostPage() {
               Guide
             </span>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4 leading-[1.15]">
-              How to use MiniCourse wisely
+              How to use MiniGuide AI wisely
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Eight practical habits to learn more in less time — using the
@@ -103,7 +103,7 @@ export default function BlogPostPage() {
       <article className="container mx-auto px-4 sm:px-6 md:px-8 py-12">
         <div className="max-w-3xl mx-auto">
           <p className="text-muted-foreground leading-relaxed mb-10">
-            MiniCourse gives you short courses, progress tracking, and quizzes —
+            MiniGuide AI gives you short courses, progress tracking, and quizzes —
             but tools only work if you use them well. Here are eight habits that
             will help you actually finish what you start and remember what you
             learn.

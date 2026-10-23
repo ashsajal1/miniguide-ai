@@ -1,4 +1,4 @@
-# Mini Course Platform
+# MiniGuide AI Platform
 
 A modern, interactive e-learning platform built with Next.js, React, and Prisma. This platform allows users to browse and take courses online with a clean, user-friendly interface.
 

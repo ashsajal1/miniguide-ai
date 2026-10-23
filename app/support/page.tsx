@@ -5,7 +5,7 @@ import { BookOpen, LifeBuoy, Mail, MessageCircleQuestion } from "lucide-react";
 export const metadata: Metadata = {
   title: "Support",
   description:
-    "Get help with MiniCourse — browse common topics or contact our support team.",
+    "Get help with MiniGuide AI — browse common topics or contact our support team.",
 };
 
 const helpTopics = [
@@ -29,7 +29,7 @@ const helpTopics = [
     icon: MessageCircleQuestion,
     title: "Account & billing",
     description:
-      "MiniCourse is free to use. Manage your profile, progress, and saved courses.",
+      "MiniGuide AI is free to use. Manage your profile, progress, and saved courses.",
     href: "/profile",
     linkLabel: "Go to profile",
   },

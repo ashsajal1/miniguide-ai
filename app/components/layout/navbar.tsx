@@ -65,7 +65,7 @@ export default function Navbar() {
             <BookOpen className="h-4 w-4" />
           </div>
           <span className="text-lg font-extrabold tracking-tight text-foreground">
-            Mini<span className="text-primary">Course</span>
+            Mini<span className="text-primary">Guide</span>
           </span>
         </Link>
 
@@ -159,7 +159,7 @@ export default function Navbar() {
                   <BookOpen className="h-4 w-4" />
                 </div>
                 <span className="font-extrabold tracking-tight">
-                  Mini<span className="text-primary">Course</span>
+                  Mini<span className="text-primary">Guide</span>
                 </span>
               </Link>
               <button
@@ -223,7 +223,7 @@ export default function Navbar() {
             </div>
 
             <div className="px-4 pb-3 text-xs text-muted-foreground text-center shrink-0">
-              © {new Date().getFullYear()} MiniCourse. All rights reserved.
+              © {new Date().getFullYear()} MiniGuide AI. All rights reserved.
             </div>
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>

@@ -77,7 +77,7 @@ export default function Footer() {
               <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
                 <BookOpen className="w-5 h-5" />
               </div>
-              <span className="text-xl font-bold tracking-tight">MiniCourse</span>
+              <span className="text-xl font-bold tracking-tight">MiniGuide AI</span>
             </Link>
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground max-w-sm">
               A modern, Radix-powered learning platform for bite-sized courses. Build skills at your own pace — mobile friendly, self-paced, and free to start.
@@ -117,7 +117,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            © {currentYear} MiniCourse. All rights reserved.
+            © {currentYear} MiniGuide AI. All rights reserved.
           </p>
           <nav className="flex flex-wrap gap-1">
             <Link href="/terms" className="inline-flex items-center justify-center rounded-md h-7 px-3 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground">

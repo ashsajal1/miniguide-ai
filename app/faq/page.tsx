@@ -5,20 +5,20 @@ import { MessageCircleQuestion } from "lucide-react";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Frequently asked questions about MiniCourse — AI-powered mini courses from docs, blogs, and documents.",
+    "Frequently asked questions about MiniGuide AI — AI-powered mini courses from docs, blogs, and documents.",
 };
 
 const faqs = [
   {
-    q: "What is MiniCourse?",
-    a: "MiniCourse is an AI-powered learning platform. Paste a link to any documentation, blog post, or article — or upload your own documents — and AI converts them into short, easy-to-learn concepts organized as courses.",
+    q: "What is MiniGuide AI?",
+    a: "MiniGuide AI is an AI-powered learning platform. Paste a link to any documentation, blog post, or article — or upload your own documents — and AI converts them into short, easy-to-learn concepts organized as courses.",
   },
   {
     q: "How do I create a course?",
     a: "Sign in and click Create Course in the navbar. Provide a source — a URL to documentation or a blog, or upload a document — and AI drafts modules, lessons, and practice questions for you. You can review and edit everything before publishing.",
   },
   {
-    q: "Is MiniCourse free?",
+    q: "Is MiniGuide AI free?",
     a: "Yes. Browsing, enrolling, and learning are completely free while we're in beta.",
   },
   {
@@ -65,7 +65,7 @@ export default function FaqPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Quick answers about creating and learning on MiniCourse.
+            Quick answers about creating and learning on MiniGuide AI.
           </p>
         </div>
       </section>

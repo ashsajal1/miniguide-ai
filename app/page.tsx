@@ -56,13 +56,13 @@ export default async function Home() {
             <div className="text-center lg:text-left">
               <span className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
                 <Sparkles className="h-3.5 w-3.5" />
-                AI-Powered Mini Course Platform
+                AI-Powered Mini Guides
               </span>
               <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight text-foreground mb-6">
                 Turn any doc into{" "}
                 <span className="relative inline-block">
                   <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                    bite-sized lessons with AI in clicks
+                    a mini guide you can finish
                   </span>
                   <svg
                     aria-hidden
@@ -81,9 +81,9 @@ export default async function Home() {
                 </span>
               </h1>
               <p className="mx-auto lg:mx-0 max-w-xl text-base sm:text-lg text-muted-foreground mb-8">
-                Paste a link to any documentation, blog, or article — or upload
-                your own documents — and AI converts them into short, easy to
-                learn concepts. Then track your progress as you master them.
+                Paste a link to any documentation, blog, or article, or upload
+                your own documents. MiniGuide AI turns them into short
+                concepts, then tracks your progress as you master them.
               </p>
 
               <div className="flex flex-wrap justify-center lg:justify-start gap-3 mb-10">
@@ -91,8 +91,8 @@ export default async function Home() {
                   Explore Courses
                   <ArrowRight className="h-5 w-5" />
                 </a>
-                <Link href="/about" className="btn btn-outline btn-lg">
-                  Learn More
+                <Link href="/course/create" className="btn btn-outline btn-lg">
+                  Create a Guide
                 </Link>
               </div>
 

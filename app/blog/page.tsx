@@ -5,7 +5,7 @@ import { ArrowRight, BookOpen, Clock, Lightbulb } from "lucide-react";
 export const metadata: Metadata = {
   title: "Blog",
   description:
-    "Guides, tips, and updates from the MiniCourse team to help you learn smarter.",
+    "Guides, tips, and updates from the MiniGuide AI team to help you learn smarter.",
 };
 
 const posts = [
@@ -13,7 +13,7 @@ const posts = [
     slug: "how-to-use-minicourse",
     tag: "Guide",
     icon: Lightbulb,
-    title: "How to use MiniCourse wisely",
+    title: "How to use MiniGuide AI wisely",
     excerpt:
       "Eight practical habits to learn more in less time — from picking the right difficulty to building a daily learning routine with the features you already have.",
     readTime: "6 min read",
@@ -36,7 +36,7 @@ export default function BlogPage() {
             Blog
           </span>
           <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4">
-            MiniCourse Blog
+            MiniGuide AI Blog
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Guides, tips, and updates to help you get the most out of your

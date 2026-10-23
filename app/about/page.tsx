@@ -68,7 +68,7 @@ export default function AboutPage() {
         <div className="relative container mx-auto px-4 sm:px-6 md:px-8 pt-16 pb-14 lg:pt-24 lg:pb-20 text-center">
           <span className="inline-flex items-center gap-2 px-3 py-1 mb-6 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
             <Sparkles className="h-3.5 w-3.5" />
-            About Mini Course
+            About MiniGuide AI
           </span>
           <h1 className="mx-auto max-w-3xl text-4xl sm:text-5xl xl:text-6xl font-extrabold leading-[1.1] tracking-tight text-foreground mb-6">
             Empowering your{" "}

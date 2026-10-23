@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "MiniCourse - Learn Something New Today",
-    template: "%s | MiniCourse",
+    default: "MiniGuide AI - Learn Something New Today",
+    template: "%s | MiniGuide AI",
   },
   description:
     "Discover and enroll in high-quality online courses to enhance your skills and advance your career. Learn at your own pace with expert instructors.",
@@ -33,16 +33,16 @@ export const metadata: Metadata = {
     "skill development",
     "professional courses",
   ],
-  authors: [{ name: "MiniCourse Team" }],
-  creator: "MiniCourse",
-  publisher: "MiniCourse",
+  authors: [{ name: "MiniGuide AI Team" }],
+  creator: "MiniGuide AI",
+  publisher: "MiniGuide AI",
   metadataBase: new URL("https://minicourse.netlify.app"),
   openGraph: {
-    title: "MiniCourse - Learn Something New Today",
+    title: "MiniGuide AI - Learn Something New Today",
     description:
       "Discover and enroll in high-quality online courses to enhance your skills and advance your career.",
     url: "https://minicourse.netlify.app",
-    siteName: "MiniCourse",
+    siteName: "MiniGuide AI",
     locale: "en_US",
     type: "website",
     images: [
@@ -50,13 +50,13 @@ export const metadata: Metadata = {
         url: "/og-image.jpg",
         width: 1200,
         height: 630,
-        alt: "MiniCourse - Online Learning Platform",
+        alt: "MiniGuide AI - Online Learning Platform",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MiniCourse - Learn Something New Today",
+    title: "MiniGuide AI - Learn Something New Today",
     description:
       "Discover and enroll in high-quality online courses to enhance your skills and advance your career.",
     images: ["/twitter-image.jpg"],

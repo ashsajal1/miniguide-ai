@@ -5,7 +5,7 @@ import { ShieldCheck } from "lucide-react";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Learn how MiniCourse collects, uses, and protects your personal information.",
+    "Learn how MiniGuide AI collects, uses, and protects your personal information.",
 };
 
 const sections: { title: string; body: string[] }[] = [
@@ -23,7 +23,7 @@ const sections: { title: string; body: string[] }[] = [
     body: [
       "To provide the service: track your progress, show your enrolled and saved courses, and personalize your learning experience.",
       "To communicate with you about your account or important updates to the platform.",
-      "To improve MiniCourse by understanding which courses and features are most useful.",
+      "To improve MiniGuide AI by understanding which courses and features are most useful.",
     ],
   },
   {
@@ -56,13 +56,13 @@ const sections: { title: string; body: string[] }[] = [
   {
     title: "7. Children's Privacy",
     body: [
-      "MiniCourse is not directed at children under 13, and we do not knowingly collect personal information from children under 13.",
+      "MiniGuide AI is not directed at children under 13, and we do not knowingly collect personal information from children under 13.",
     ],
   },
   {
     title: "8. Changes to This Policy",
     body: [
-      "We may update this policy from time to time. Material changes will be announced on the platform. Continued use of MiniCourse after an update means you accept the revised policy.",
+      "We may update this policy from time to time. Material changes will be announced on the platform. Continued use of MiniGuide AI after an update means you accept the revised policy.",
     ],
   },
 ];
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
         <div className="max-w-3xl mx-auto space-y-10">
           <p className="text-muted-foreground leading-relaxed">
             Your privacy matters to us. This policy explains what information
-            MiniCourse collects when you use our platform, why we collect it,
+            MiniGuide AI collects when you use our platform, why we collect it,
             and the choices you have.
           </p>
 
