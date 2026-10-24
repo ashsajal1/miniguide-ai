@@ -99,7 +99,7 @@ export default function Navbar() {
         {/* Desktop actions */}
         <div className="hidden md:flex items-center gap-2">
           <Link
-            href="/course/create"
+            href="/course/create" prefetch={false}
             className="btn btn-primary btn-sm gap-1.5"
           >
             <Plus className="h-4 w-4" />
@@ -195,7 +195,7 @@ export default function Navbar() {
 
             <div className="p-4 space-y-2 border-t shrink-0">
               <Link
-                href="/course/create"
+                href="/course/create" prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="btn btn-primary w-full gap-1.5"
               >

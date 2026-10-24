@@ -91,7 +91,7 @@ export default async function Home() {
                   Explore Courses
                   <ArrowRight className="h-5 w-5" />
                 </a>
-                <Link href="/course/create" className="btn btn-outline btn-lg">
+                <Link href="/course/create" prefetch={false} className="btn btn-outline btn-lg">
                   Create a Guide
                 </Link>
               </div>

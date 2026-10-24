@@ -100,6 +100,7 @@ export default function Footer() {
                   <li key={link.name}>
                     <Link 
                       href={link.href}
+                      prefetch={link.href === "/course/create" ? false : undefined}
                       className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {link.icon}
