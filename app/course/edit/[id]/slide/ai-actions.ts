@@ -2,6 +2,12 @@
 
 import { generateText } from "ai";
 import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
+import {
+  AiScope,
+  buildCoursePromptContext,
+  buildStatePromptContext,
+  resolveAiContext,
+} from "@/lib/ai-context";
 
 // Detect if the docs contain URLs
 function containsUrls(text: string): boolean {
@@ -9,7 +15,11 @@ function containsUrls(text: string): boolean {
   return urlPattern.test(text);
 }
 
-export async function generateSlideContent(prompt: string, docs?: string) {
+export async function generateSlideContent(
+  prompt: string,
+  docs?: string,
+  scope?: AiScope
+) {
   if (!isAiConfigured()) {
     return {
       success: false,
@@ -23,7 +33,23 @@ export async function generateSlideContent(prompt: string, docs?: string) {
     // URL-aware model for docs containing links, regular model otherwise
     const model = getModel(hasUrls);
 
+    // Stateful context: course + module + everything generated so far
+    const context = await resolveAiContext(scope);
+    const courseContextBlock = buildCoursePromptContext(
+      context?.course,
+      context?.module
+    );
+    const stateContextBlock = buildStatePromptContext(context?.state);
+
     const systemPrompt = `You are an expert educational content creator specializing in creating engaging, effective course slides. Generate comprehensive slide content in Markdown format.
+
+${courseContextBlock}
+
+CONSISTENCY RULES (this slide belongs to a guided course):
+- Stay on the scope of the current module: do not teach content the roadmap assigns to a later module, and do not re-explain what an earlier module already covered.
+- Reuse the course's established terms and naming; do not invent synonyms for concepts named in the context above.
+- Assume the learner has already seen every slide listed under ALREADY GENERATED; this slide must add new material, not repeat it.
+- Match the course's difficulty level and language.
 
 CONTENT REQUIREMENTS:
 - Create engaging, educational content suitable for online learning
@@ -47,7 +73,7 @@ EDUCATIONAL PRINCIPLES:
 - Use active language and actionable insights
 - Connect concepts to broader learning objectives
 
-${hasUrls ? "When URLs are provided, fetch and analyze the content from those URLs to create accurate, up-to-date slides with current examples and data." : ""}
+${stateContextBlock ? `${stateContextBlock}\n\n` : ""}${hasUrls ? "When URLs are provided, fetch and analyze the content from those URLs to create accurate, up-to-date slides with current examples and data." : ""}
 
 Output ONLY the markdown content for the slide with a clear title, nothing else.`;
 

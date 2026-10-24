@@ -100,8 +100,9 @@ export async function generateCourseOutline(url: string): Promise<CourseOutlineR
     const systemPrompt = `Analyze the following document content and create a structured course outline.
 
 Requirements:
-- 3-6 modules with logical progression
-- Specific, measurable learning objectives per module
+- 3-6 modules forming a progressive learning path: each module must build on the previous one, starting from fundamentals and advancing to complex topics
+- No topic overlap between modules: split concerns cleanly so each module owns a distinct part of the subject
+- Specific, measurable learning objectives per module (2-4 each), phrased so later modules can assume earlier ones were learned
 - Realistic time estimates per module
 - Difficulty: Beginner/Intermediate/Advanced
 - Language matches document (default: English)
@@ -117,7 +118,7 @@ Return ONLY valid JSON (no markdown, no code blocks):
   "modules": [
     {
       "title": "Module title",
-      "description": "What this module covers",
+      "description": "What this module covers and how it builds on earlier modules",
       "learningObjectives": ["Specific objective 1", "Specific objective 2"],
       "estimatedDuration": "X min",
       "order": 1

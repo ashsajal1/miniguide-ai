@@ -5,6 +5,11 @@ import prisma from "@/prisma/client";
 import { CourseOutline, ModuleOutline } from "@/lib/course-ai-service";
 import { generateSlideContent } from "@/app/course/edit/[id]/slide/ai-actions";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
+import {
+  AiScope,
+  GenerationState,
+  ResolvedAiContext,
+} from "@/lib/ai-context";
 
 export interface CourseGenerationProgress {
   stage: 'creating-course' | 'generating-slides' | 'generating-questions' | 'finalizing';
@@ -85,9 +90,31 @@ export async function createCourseFromOutline(
       modules: [],
     };
 
+    // Stateful AI context shared across every generation call in this run:
+    // the course (with its full module roadmap) plus an accumulating record of
+    // everything already generated, so later modules/slides/questions build on
+    // earlier ones instead of repeating them.
+    const totalModules = Math.min(outline.modules.length, 10);
+    const generationState: GenerationState = { slides: [], questions: [] };
+    const aiContext: ResolvedAiContext = {
+      course: {
+        title: outline.title,
+        description: outline.description,
+        difficulty: outline.difficulty,
+        language: outline.language,
+        roadmap: outline.modules.slice(0, totalModules).map((m, idx) => ({
+          order: idx + 1,
+          title: m.title,
+          description: m.description,
+        })),
+      },
+      state: generationState,
+    };
+    const aiScope: AiScope = { courseId: course.id, context: aiContext };
+
     // Stage 2: Generate modules with content (limit to prevent payload size issues)
 
-    for (let i = 0; i < Math.min(outline.modules.length, 10); i++) {
+    for (let i = 0; i < totalModules; i++) {
       const moduleOutline = outline.modules[i];
       const moduleOrder = i + 1;
 
@@ -101,6 +128,15 @@ export async function createCourseFromOutline(
       });
 
       const moduleId = newModule.id;
+
+      // Point the shared context at the module currently being generated
+      aiContext.module = {
+        title: moduleOutline.title,
+        description: moduleOutline.description,
+        learningObjectives: moduleOutline.learningObjectives,
+        position: moduleOrder,
+        totalModules,
+      };
 
       const generatedModule: GeneratedModule = {
         id: moduleId,
@@ -143,10 +179,15 @@ export async function createCourseFromOutline(
             content: slide.content,
             order: contentItem.order,
           });
+
+          generationState.slides!.push({
+            module: moduleOutline.title,
+            title: slide.title ?? `Slide ${j + 1}`,
+          });
         }
       } else {
         // Generate slides using AI
-        slides = await generateSlidesForModule(moduleOutline, moduleId, moduleOrder);
+        slides = await generateSlidesForModule(moduleOutline, moduleId, moduleOrder, aiScope);
       }
       generatedModule.slides = slides;
 
@@ -204,10 +245,15 @@ export async function createCourseFromOutline(
             options: questionOptions,
             order: questionContentItem.order,
           });
+
+          generationState.questions!.push({
+            module: moduleOutline.title,
+            title: questionRecord.title ?? `Question ${j + 1}`,
+          });
         }
       } else {
         // Generate questions using AI
-        questions = await generateQuestionsForModule(slides, moduleId, moduleOrder, moduleOutline);
+        questions = await generateQuestionsForModule(slides, moduleId, moduleOrder, moduleOutline, aiScope);
       }
       generatedModule.questions = questions;
 
@@ -234,7 +280,8 @@ export async function createCourseFromOutline(
 async function generateSlidesForModule(
   moduleOutline: ModuleOutline,
   moduleId: string,
-  moduleOrder: number
+  moduleOrder: number,
+  scope?: AiScope
 ): Promise<GeneratedSlide[]> {
   const slides: GeneratedSlide[] = [];
 
@@ -306,8 +353,8 @@ For the module "${moduleOutline.title}", cover:
         }
       }
 
-      // Generate slide content using existing AI function
-      const slideResult = await generateSlideContent(slidePrompt);
+      // Generate slide content using existing AI function (stateful: sees course, module and prior slides)
+      const slideResult = await generateSlideContent(slidePrompt, undefined, scope);
 
       if (slideResult.success && slideResult.content) {
         // Create content relationship first
@@ -335,6 +382,12 @@ For the module "${moduleOutline.title}", cover:
           content: slide.content,
           order: contentItem.order,
         });
+
+        // Record in the shared generation state so the next slide/question builds on this one
+        scope?.context?.state?.slides?.push({
+          module: moduleOutline.title,
+          title: slide.title ?? `Slide ${i + 1}`,
+        });
       }
     }
   } catch (error) {
@@ -351,7 +404,8 @@ async function generateQuestionsForModule(
   slides: GeneratedSlide[],
   moduleId: string,
   moduleOrder: number,
-  moduleOutline: ModuleOutline
+  moduleOutline: ModuleOutline,
+  scope?: AiScope
 ): Promise<GeneratedQuestion[]> {
   const questions: GeneratedQuestion[] = [];
 
@@ -393,8 +447,8 @@ ${questionType === 'foundational' ? '- Test basic definitions, terminology, and 
 
 Create a challenging but fair question that requires understanding of the material, not just memorization.`;
 
-      // Generate question using existing AI function with enhanced context
-      const questionResult = await generateMCQFromSlide(questionPrompt);
+      // Generate question using existing AI function with enhanced context (stateful: sees course, module and prior questions)
+      const questionResult = await generateMCQFromSlide(questionPrompt, scope);
 
       if (questionResult.success && questionResult.mcq) {
         // Create content relationship first
@@ -442,6 +496,12 @@ Create a challenging but fair question that requires understanding of the materi
           question: questionRecord.content,
           options: questionOptions,
           order: questionContentItem.order,
+        });
+
+        // Record in the shared generation state so the next question builds on this one
+        scope?.context?.state?.questions?.push({
+          module: moduleOutline.title,
+          title: questionRecord.title ?? `Question ${i + 1}`,
         });
       }
     }

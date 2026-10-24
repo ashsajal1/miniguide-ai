@@ -2,6 +2,12 @@
 
 import { generateText } from "ai";
 import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
+import {
+  AiScope,
+  buildCoursePromptContext,
+  buildStatePromptContext,
+  resolveAiContext,
+} from "@/lib/ai-context";
 
 interface MCQOption {
   text: string;
@@ -15,7 +21,10 @@ interface GeneratedMCQ {
   options: MCQOption[];
 }
 
-export async function generateMCQFromSlide(slideContent: string) {
+export async function generateMCQFromSlide(
+  slideContent: string,
+  scope?: AiScope
+) {
   if (!isAiConfigured()) {
     return {
       success: false,
@@ -23,7 +32,15 @@ export async function generateMCQFromSlide(slideContent: string) {
     };
   }
 
-  if (!slideContent.trim()) {
+  // Stateful context: course + module + everything generated so far
+  const context = await resolveAiContext(scope);
+
+  const material = slideContent.trim()
+    ? slideContent
+    : context?.previousSlideContent ?? "";
+  const hasSlide = Boolean(material.trim());
+
+  if (!hasSlide) {
     return {
       success: false,
       error: "Slide content is required",
@@ -31,7 +48,21 @@ export async function generateMCQFromSlide(slideContent: string) {
   }
 
   try {
+    const courseContextBlock = buildCoursePromptContext(
+      context?.course,
+      context?.module
+    );
+    const stateContextBlock = buildStatePromptContext(context?.state);
+
     const systemPrompt = `You are an expert educational assessment designer. Create high-quality multiple choice questions that effectively test learning and understanding.
+
+${courseContextBlock}
+
+CONSISTENCY RULES (this question belongs to a guided course):
+- Test only material from the current module's slide content below; do not ask about content the roadmap assigns to a later module.
+- Reuse the course's established terms and naming; do not invent synonyms for concepts named in the context above.
+- Never repeat or rephrase a question listed under ALREADY GENERATED; each question must assess different material.
+- Calibrate difficulty to the course's level and write in the course's language.
 
 QUESTION DESIGN PRINCIPLES:
 - **Cognitive Levels**: Create questions that test analysis, application, and critical thinking (not just recall)
@@ -77,11 +108,13 @@ OUTPUT FORMAT (JSON only, no markdown):
   ]
 }
 
-Return ONLY valid JSON, no additional text or formatting.`;
+Return ONLY valid JSON, no additional text or formatting.
+
+${stateContextBlock}`.trimEnd();
 
     const userPrompt = `Based on the following slide content, create an MCQ question:
 
-${slideContent}`;
+${material}`;
 
     const { text: content } = await generateText({
       model: aiProvider.chatModel(getModel()),

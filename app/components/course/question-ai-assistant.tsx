@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Sparkles, ChevronDown, AlertCircle, FileText } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
+import type { AiScope } from "@/lib/ai-context";
 import type { Option } from "./question-form";
 
 interface QuestionAiAssistantProps {
@@ -22,11 +24,22 @@ export default function QuestionAiAssistant({
   onGeneratingChange,
   isSubmitting = false,
 }: QuestionAiAssistantProps) {
+  const params = useParams();
+  const searchParams = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const hasSlideContent = previousSlideContent && previousSlideContent.trim();
+  // Stateful scope: course + module + generation state loaded server-side
+  const courseId = typeof params?.id === "string" ? params.id : undefined;
+  const moduleId = searchParams?.get("moduleId") ?? undefined;
+  const scope: AiScope | undefined =
+    courseId || moduleId ? { courseId, moduleId } : undefined;
+
+  // With a scope the server can fall back to the module's last slide,
+  // so generation is possible even without explicitly passed content.
+  const hasSlideContent =
+    (previousSlideContent && previousSlideContent.trim()) || Boolean(scope);
 
   const handleGenerate = async () => {
     if (!hasSlideContent) return;
@@ -36,7 +49,10 @@ export default function QuestionAiAssistant({
     setError(null);
 
     try {
-      const result = await generateMCQFromSlide(previousSlideContent);
+      const result = await generateMCQFromSlide(
+        previousSlideContent ?? "",
+        scope
+      );
 
       if (result.success && result.mcq) {
         onQuestionGenerated({

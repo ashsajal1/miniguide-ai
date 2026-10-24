@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Sparkles, ChevronDown, FileText, AlertCircle } from "lucide-react";
+import { useParams, useSearchParams } from "next/navigation";
 
 import { generateSlideContent } from "@/app/course/edit/[id]/slide/ai-actions";
+import type { AiScope } from "@/lib/ai-context";
 
 interface SlideAiAssistantProps {
   onContentGenerated: (content: string) => void;
@@ -16,11 +18,19 @@ export default function SlideAiAssistant({
   onTitleGenerated,
   onGeneratingChange,
 }: SlideAiAssistantProps) {
+  const params = useParams();
+  const searchParams = useSearchParams();
   const [isExpanded, setIsExpanded] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [docs, setDocs] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Stateful scope: course + module + generation state loaded server-side
+  const courseId = typeof params?.id === "string" ? params.id : undefined;
+  const moduleId = searchParams?.get("moduleId") ?? undefined;
+  const scope: AiScope | undefined =
+    courseId || moduleId ? { courseId, moduleId } : undefined;
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -30,7 +40,7 @@ export default function SlideAiAssistant({
     setError(null);
 
     try {
-      const result = await generateSlideContent(prompt, docs || undefined);
+      const result = await generateSlideContent(prompt, docs || undefined, scope);
 
       if (result.success && result.content) {
         onContentGenerated(result.content);
