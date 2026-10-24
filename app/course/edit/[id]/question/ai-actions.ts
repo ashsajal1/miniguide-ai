@@ -1,10 +1,7 @@
 "use server";
 
-import Groq from "groq-sdk";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { generateText } from "ai";
+import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 
 interface MCQOption {
   text: string;
@@ -19,10 +16,10 @@ interface GeneratedMCQ {
 }
 
 export async function generateMCQFromSlide(slideContent: string) {
-  if (!process.env.GROQ_API_KEY) {
+  if (!isAiConfigured()) {
     return {
       success: false,
-      error: "GROQ_API_KEY is not configured",
+      error: "AI provider is not configured",
     };
   }
 
@@ -86,17 +83,13 @@ Return ONLY valid JSON, no additional text or formatting.`;
 
 ${slideContent}`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      model: "llama-3.3-70b-versatile",
+    const { text: content } = await generateText({
+      model: aiProvider.chatModel(getModel()),
+      system: systemPrompt,
+      prompt: userPrompt,
       temperature: 0.7,
-      max_tokens: 1024,
+      maxOutputTokens: 1024,
     });
-
-    const content = completion.choices[0]?.message?.content;
 
     if (!content) {
       return {

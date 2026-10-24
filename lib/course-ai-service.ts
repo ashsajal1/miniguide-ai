@@ -1,14 +1,11 @@
 "use server"
 
-import Groq from "groq-sdk";
+import { generateText } from "ai";
+import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 import {
   extractContentFromUrl,
   summarizeForOutline,
 } from "@/lib/url-content-extractor";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
 
 export interface SlideOutline {
   title: string;
@@ -59,7 +56,7 @@ export interface CourseOutlineResponse {
  */
 export async function generateCourseOutline(url: string): Promise<CourseOutlineResponse> {
   "use server";
-  if (!process.env.GROQ_API_KEY) {
+  if (!isAiConfigured()) {
     return {
       success: false,
       error: "AI service not configured",
@@ -135,17 +132,13 @@ ${contentForAI}
 
 Create a course outline based on this content. The course should teach the material covered in the document.`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      model: "llama-3.3-70b-versatile",
+    const { text: aiContent } = await generateText({
+      model: aiProvider.chatModel(getModel()),
+      system: systemPrompt,
+      prompt: userPrompt,
       temperature: 0.7,
-      max_tokens: 4096,
+      maxOutputTokens: 4096,
     });
-
-    const aiContent = completion.choices[0]?.message?.content;
 
     if (!aiContent) {
       return {

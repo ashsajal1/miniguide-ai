@@ -1,10 +1,7 @@
 "use server";
 
-import Groq from "groq-sdk";
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+import { generateText } from "ai";
+import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 
 // Detect if the docs contain URLs
 function containsUrls(text: string): boolean {
@@ -13,18 +10,18 @@ function containsUrls(text: string): boolean {
 }
 
 export async function generateSlideContent(prompt: string, docs?: string) {
-  if (!process.env.GROQ_API_KEY) {
+  if (!isAiConfigured()) {
     return {
       success: false,
-      error: "GROQ_API_KEY is not configured",
+      error: "AI provider is not configured",
     };
   }
 
   try {
     const hasUrls = docs ? containsUrls(docs) : false;
 
-    // Use compound-beta for URL fetching, llama for regular text
-    const model = hasUrls ? "compound-beta" : "llama-3.3-70b-versatile";
+    // URL-aware model for docs containing links, regular model otherwise
+    const model = getModel(hasUrls);
 
     const systemPrompt = `You are an expert educational content creator specializing in creating engaging, effective course slides. Generate comprehensive slide content in Markdown format.
 
@@ -59,17 +56,15 @@ Output ONLY the markdown content for the slide with a clear title, nothing else.
       ? `Based on the following documentation/context:\n\n${docs}\n\nCreate a slide about: ${prompt}`
       : `Create a slide about: ${prompt}`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      model,
+    const { text } = await generateText({
+      model: aiProvider.chatModel(model),
+      system: systemPrompt,
+      prompt: userPrompt,
       temperature: 0.7,
-      max_tokens: 2048,
+      maxOutputTokens: 2048,
     });
 
-    let content = completion.choices[0]?.message?.content;
+    let content = text;
 
     if (!content) {
       return {
