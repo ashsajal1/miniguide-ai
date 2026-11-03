@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  FileText,
   Link as LinkIcon,
   Sparkles,
   Pencil,
@@ -15,138 +14,114 @@ export const metadata: Metadata = {
 
 export default async function CreateCoursePage() {
   return (
-    <div className="min-h-[calc(100vh-80px)] flex items-center justify-center">
-      <div className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-16 space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium">
-              <Sparkles className="h-4 w-4" />
-              Course Builder
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-              Create a New Course
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              Choose how you would like to build your course — from scratch or
-              with AI assistance.
-            </p>
-          </div>
-
-          {/* Cards */}
-          <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
-            {/* Manual Creation Card */}
-            <Link href="/course/create/manual" className="group block">
-              <div className="card bg-card border border shadow-sm hover:shadow-xl hover:border-primary/40 transition-all duration-300 h-full">
-                <div className="card-body p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <Pencil className="h-7 w-7 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="card-title text-xl">Manual Creation</h2>
-                      <p className="text-sm text-foreground/50">
-                        Full control
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-muted-foreground mb-8 leading-relaxed">
-                    Start from scratch and build every detail yourself — define
-                    modules, write slides, and craft questions exactly how you
-                    want them.
-                  </p>
-
-                  <ul className="space-y-3 mb-8">
-                    {[
-                      "Custom module structure",
-                      "Hand-crafted slides & content",
-                      "Custom quiz questions",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-center gap-2.5 text-sm text-muted-foreground"
-                      >
-                        <CheckCircle className="h-4 w-4 text-primary/70 flex-shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="card-actions justify-end mt-auto">
-                    <span className="btn btn-primary btn-outline group-hover:btn-primary transition-colors">
-                      Create Manually
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            {/* URL-Based Creation Card */}
-            <Link href="/course/create/url" className="group block">
-              <div className="card bg-gradient-to-br from-base-100 to-secondary/5 border border-secondary/30 shadow-sm hover:shadow-xl hover:border-secondary/60 transition-all duration-300 h-full">
-                <div className="card-body p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="p-4 rounded-2xl bg-secondary/10 group-hover:bg-secondary/20 transition-colors">
-                      <LinkIcon className="h-7 w-7 text-secondary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="card-title text-xl">
-                          Generate from URL
-                        </h2>
-                        <span className="badge badge-secondary badge-sm gap-1">
-                          <Sparkles className="h-3 w-3" />
-                          AI
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground/50">
-                        AI-powered
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="text-muted-foreground mb-8 leading-relaxed">
-                    Paste a document URL and let AI generate a complete course
-                    outline with modules, slides, and questions automatically.
-                  </p>
-
-                  <ul className="space-y-3 mb-8">
-                    {[
-                      "Google Docs, PDFs, Web Articles",
-                      "AI-generated content & questions",
-                      "Fully editable after generation",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-center gap-2.5 text-sm text-muted-foreground"
-                      >
-                        <CheckCircle className="h-4 w-4 text-secondary/70 flex-shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="card-actions justify-end mt-auto">
-                    <span className="btn btn-secondary group-hover:scale-[1.02] transition-transform">
-                      Generate from URL
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </div>
-
-          {/* Footer hint */}
-          <div className="text-center mt-12">
-            <p className="text-sm text-foreground/40">
-              Not sure? Try the AI option for a quick start — you can always
-              edit everything afterward.
-            </p>
-          </div>
+    <div className="min-h-[calc(100vh-5rem)]">
+      <div className="mx-auto max-w-[1080px] px-5 py-12 sm:px-8">
+        {/* Header */}
+        <div className="mb-12 max-w-[540px]">
+          <p className="inline-flex items-center gap-2 rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-ink">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden />
+            Course builder
+          </p>
+          <h1 className="mt-4 text-[clamp(2.2rem,4.4vw,3.4rem)] text-foreground">
+            Create a course.
+          </h1>
+          <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-muted-foreground">
+            Build it yourself, or let AI draft the outline from a document URL. You can edit everything either way.
+          </p>
         </div>
+
+        {/* Choices */}
+        <div className="grid gap-4 md:grid-cols-2 lg:gap-6">
+          {/* Manual */}
+          <Link href="/course/create/manual" className="group block">
+            <div className="flex h-full flex-col rounded-[14px] border border-rule bg-card p-6 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)] sm:p-8">
+              <div className="mb-6 flex items-center gap-4">
+                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-paper-2 text-ink">
+                  <Pencil className="h-6 w-6" aria-hidden />
+                </div>
+                <div>
+                  <h2 className="text-xl text-foreground">Manual creation</h2>
+                  <p className="text-sm text-muted-foreground">Full control</p>
+                </div>
+              </div>
+
+              <p className="mb-7 text-sm leading-relaxed text-muted-foreground">
+                Start from scratch and build every detail yourself. Define modules, write short slide cards, craft questions, and add written practice exactly how you want them.
+              </p>
+
+              <ul className="mb-8 space-y-2.5">
+                {[
+                  "Custom module structure",
+                  "Hand-crafted slide cards and content",
+                  "Custom quiz questions",
+                  "Written practice with AI feedback",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-ink-2">
+                    <CheckCircle className="h-4 w-4 shrink-0 text-accent" aria-hidden />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-auto">
+                <span className="btn btn-outline w-full">
+                  Create manually
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </div>
+            </div>
+          </Link>
+
+          {/* URL */}
+          <Link href="/course/create/url" className="group block">
+            <div className="plastic plastic--thu flex h-full flex-col rounded-[14px] p-6 transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)] sm:p-8">
+              <div className="mb-6 flex items-center gap-4">
+                <div className="grid h-12 w-12 place-items-center rounded-[10px] bg-card/70 text-ink">
+                  <LinkIcon className="h-6 w-6" aria-hidden />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl text-ink">Generate from URL</h2>
+                    <span className="rounded-full bg-card/70 px-2 py-0.5 text-[10px] font-medium text-ink">
+                      AI
+                    </span>
+                  </div>
+                  <p className="text-sm text-ink/65">AI-powered</p>
+                </div>
+              </div>
+
+              <p className="mb-7 text-sm leading-relaxed text-ink/75">
+                Paste a document URL and let AI generate a complete course outline with modules, slide cards, questions, and a written task automatically.
+              </p>
+
+              <ul className="mb-8 space-y-2.5">
+                {[
+                  "Google Docs, PDFs, web articles",
+                  "AI-generated slide cards and questions",
+                  "A written task with AI feedback",
+                  "Fully editable after generation",
+                ].map((item) => (
+                  <li key={item} className="flex items-center gap-2.5 text-sm text-ink/80">
+                    <CheckCircle className="h-4 w-4 shrink-0 text-accent-deep" aria-hidden />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-auto">
+                <span className="btn btn-primary w-full">
+                  Generate from URL
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </span>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        {/* Footer hint */}
+        <p className="mt-10 max-w-[52ch] text-sm text-muted-foreground">
+          Not sure? Try the AI option for a quick start. You can always edit everything afterward.
+        </p>
       </div>
     </div>
   );

@@ -1,21 +1,28 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Schibsted_Grotesk, Instrument_Sans, DM_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "./components/layout/navbar";
+import SiteShell from "./components/layout/site-shell";
 import { ThemeProvider } from "./components/ui/theme-provider";
-import Footer from "./components/layout/footer";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import Providers from "./components/ui/providers";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const schibsted = Schibsted_Grotesk({
+  variable: "--font-schibsted",
   subsets: ["latin"],
+  weight: ["700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const instrument = Instrument_Sans({
+  variable: "--font-instrument",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const dmMono = DM_Mono({
+  variable: "--font-dm-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -89,7 +96,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${schibsted.variable} ${instrument.variable} ${dmMono.variable} paper-grain antialiased`}
       >
         <ClerkProvider>
           <ThemeProvider
@@ -99,11 +106,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Providers>
-              <Navbar />
-              <main className="pt-16 min-h-[calc(100vh-4rem)] bg-background">
-                {children}
-              </main>
-              <Footer />
+              <SiteShell>{children}</SiteShell>
             </Providers>
           </ThemeProvider>
         </ClerkProvider>

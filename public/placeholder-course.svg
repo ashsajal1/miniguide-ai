@@ -1,22 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#10b981"/>
-    </linearGradient>
-  </defs>
-  <rect width="800" height="450" fill="url(#bg)"/>
-  <g opacity="0.12" stroke="#ffffff" stroke-width="2">
-    <circle cx="120" cy="90" r="140" fill="none"/>
-    <circle cx="700" cy="400" r="180" fill="none"/>
-    <circle cx="640" cy="60" r="60" fill="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="MiniGuide course cover">
+  <rect width="800" height="450" fill="#f6f2e9"/>
+  <g stroke="#d9dfd2" stroke-width="1" opacity="0.8">
+    <path d="M80 0V450M160 0V450M240 0V450M320 0V450M400 0V450M480 0V450M560 0V450M640 0V450M720 0V450"/>
   </g>
-  <g transform="translate(400 225)" fill="#ffffff">
-    <g transform="translate(-40 -44)">
-      <path d="M4 0C4 0 20 -4 38 2 V64 C20 58 4 62 4 62 Z M72 0 C72 0 56 -4 38 2 V64 C56 58 72 62 72 62 Z"
-        fill="none" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" opacity="0.95"/>
-      <path d="M38 2 V64" stroke="#ffffff" stroke-width="3" opacity="0.7"/>
-    </g>
-    <text x="0" y="76" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="600" opacity="0.9">No preview</text>
+  <rect x="284" y="134" width="232" height="182" rx="10" fill="#fbf8f1" stroke="#d9dfd2"/>
+  <g transform="translate(400 200)" fill="none" stroke="#2f7355" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-34 -22C-22 -26 -8 -25 0 -20V26C-8 21 -22 22 -34 26Z" stroke-width="3"/>
+    <path d="M34 -22C22 -26 8 -25 0 -20V26C8 21 22 22 34 26Z" stroke-width="3"/>
+    <path d="M0 -20V26" stroke-width="2" stroke="#9db3a8"/>
   </g>
+  <text x="400" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="21" font-weight="700" fill="#1b2a27">MiniGuide AI</text>
+  <path d="M330 284H470" stroke="#d9dfd2" stroke-width="1" stroke-dasharray="4 5"/>
 </svg>

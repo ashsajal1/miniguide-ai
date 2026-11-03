@@ -50,3 +50,8 @@ deno.lock
 
 # netlify
 .netlify
+
+# local design review artifacts
+.hallmark/
+.qoder/
+.impeccable/

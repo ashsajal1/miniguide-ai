@@ -25,7 +25,7 @@ export function CreatedCoursesSection({ courses }: CreatedCoursesProps) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">My Created Courses</h2>
+        <h2 className="text-xl text-foreground">My Created Courses</h2>
         {courses.length > 0 && (
           <span className="text-sm text-muted-foreground">
             {courses.length} {courses.length === 1 ? "course" : "courses"}
@@ -34,8 +34,8 @@ export function CreatedCoursesSection({ courses }: CreatedCoursesProps) {
       </div>
 
       {courses.length === 0 ? (
-        <div className="rounded-2xl bg-card ring-1 ring-border p-10 text-center">
-          <div className="grid place-items-center h-12 w-12 mx-auto mb-3 rounded-xl bg-primary/10 text-primary">
+        <div className="rounded-[14px] border border-rule bg-card p-10 text-center">
+          <div className="grid place-items-center h-12 w-12 mx-auto mb-3 rounded-[10px] bg-accent-soft text-accent-deep">
             <Plus className="h-6 w-6" />
           </div>
           <p className="text-muted-foreground mb-4">
@@ -54,14 +54,14 @@ export function CreatedCoursesSection({ courses }: CreatedCoursesProps) {
           {courses.map((course) => (
             <li
               key={course.id}
-              className="group rounded-2xl bg-card ring-1 ring-border p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-lg hover:shadow-primary/5 transition-shadow"
+              className="group rounded-[14px] border border-rule bg-card p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-shadow hover:shadow-[var(--shadow-card)]"
             >
-              <div className="relative w-full sm:w-32 h-40 sm:h-20 shrink-0 rounded-xl overflow-hidden bg-muted">
+              <div className="relative w-full sm:w-32 h-40 sm:h-20 shrink-0 rounded-[10px] overflow-hidden bg-paper-2">
                 <Image
                   src={course.thumbnail_url || "/placeholder-course.svg"}
                   alt={course.name}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover transition-transform duration-500 "
                   sizes="128px"
                 />
               </div>

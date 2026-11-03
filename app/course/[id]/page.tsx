@@ -79,7 +79,9 @@ export default async function CoursePage({
       modules: {
         where: { deleted_at: null },
         orderBy: [{ order: "asc" }, { created_at: "asc" }],
-        include: { _count: { select: { slides: true, questions: true } } },
+        include: {
+          _count: { select: { slides: true, questions: true, written: true } },
+        },
       },
     },
   });
@@ -101,11 +103,12 @@ export default async function CoursePage({
 
   const totalLessons = course.modules.reduce((sum, m) => sum + m._count.slides, 0);
   const totalQuestions = course.modules.reduce((sum, m) => sum + m._count.questions, 0);
+  const totalWritten = course.modules.reduce((sum, m) => sum + m._count.written, 0);
 
   return (
     <div className="min-h-screen bg-background">
       {/* Banner */}
-      <section className="relative h-72 sm:h-80">
+      <section className="course-media relative h-72 sm:h-80">
         <Image
           src={course.thumbnail_url || "/placeholder-course.svg"}
           alt={course.name}
@@ -115,7 +118,7 @@ export default async function CoursePage({
           priority
         />
         {/* Legibility scrims */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-shade/80 via-shade/30 to-shade/10" />
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
 
         <div className="absolute inset-0">
@@ -131,11 +134,11 @@ export default async function CoursePage({
             </nav>
 
             {course.category && (
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/75 mb-2">
+              <p className="mb-2 text-xs font-medium text-white/80">
                 {course.category.name}
               </p>
             )}
-            <h1 className="max-w-3xl text-3xl sm:text-4xl xl:text-5xl font-extrabold leading-[1.1] tracking-tight text-white mb-4">
+            <h1 className="mb-4 max-w-3xl text-[clamp(2rem,4vw,3.2rem)] leading-[1.04] text-white">
               {course.name}
             </h1>
 
@@ -145,12 +148,12 @@ export default async function CoursePage({
               >
                 {course.difficulty}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-white/90">
-                <Globe className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-white/90">
+                <Globe className="h-3.5 w-3.5" aria-hidden />
                 {(course.lang || "en").toUpperCase()}
               </span>
-              <span className="inline-flex items-center gap-1.5 text-white/90">
-                <Users className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1.5 text-[11px] text-white/90">
+                <Users className="h-3.5 w-3.5" aria-hidden />
                 {enrollmentCount} enrolled
               </span>
               {ratingData.count > 0 && (
@@ -170,7 +173,7 @@ export default async function CoursePage({
           {/* Main column */}
           <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* About */}
-            <section className="rounded-2xl bg-card ring-1 ring-border p-6 sm:p-7">
+            <section className="rounded-[14px] border border-rule bg-card p-6 sm:p-7">
               <h2 className="text-xl font-bold tracking-tight mb-3">
                 About this course
               </h2>
@@ -180,16 +183,16 @@ export default async function CoursePage({
             </section>
 
             {/* Curriculum */}
-            <section className="rounded-2xl bg-card ring-1 ring-border p-6 sm:p-7">
+            <section className="rounded-[14px] border border-rule bg-card p-6 sm:p-7">
               <div className="flex flex-wrap items-baseline justify-between gap-2 mb-5">
                 <h2 className="text-xl font-bold tracking-tight">Curriculum</h2>
-                <p className="text-sm text-muted-foreground">
-                  {course.modules.length}{" "}
-                  {course.modules.length === 1 ? "module" : "modules"}
-                  {" · "}
+                <p className="font-mono text-[11px] text-muted-foreground">
+                  {course.modules.length} {course.modules.length === 1 ? "module" : "modules"}
+                  {", "}
                   {totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}
-                  {totalQuestions > 0 &&
-                    ` · ${totalQuestions} practice questions`}
+                  {totalQuestions > 0 && `, ${totalQuestions} practice questions`}
+                  {totalWritten > 0 &&
+                    `, ${totalWritten} written ${totalWritten === 1 ? "task" : "tasks"}`}
                 </p>
               </div>
 
@@ -204,8 +207,8 @@ export default async function CoursePage({
                       key={courseModule.id}
                       className="flex items-center gap-3.5 rounded-xl border border-border bg-background p-3.5"
                     >
-                      <span className="grid place-items-center h-8 w-8 shrink-0 rounded-full bg-primary/10 text-primary text-sm font-bold">
-                        {index + 1}
+                      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] bg-accent-soft font-mono text-[11px] font-medium text-ink">
+                        {String(index + 1).padStart(2, "0")}
                       </span>
                       <span className="font-medium text-foreground truncate">
                         {courseModule.title}
@@ -218,7 +221,7 @@ export default async function CoursePage({
 
             {/* Rating + review form */}
             {(ratingData.count > 0 || clerkId) && (
-              <section className="rounded-2xl bg-card ring-1 ring-border p-6 sm:p-7">
+              <section className="rounded-[14px] border border-rule bg-card p-6 sm:p-7">
                 <h2 className="text-xl font-bold tracking-tight mb-4">
                   Ratings &amp; reviews
                 </h2>
@@ -248,10 +251,10 @@ export default async function CoursePage({
           {/* Sidebar */}
           <aside className="lg:col-span-1">
             <div className="lg:sticky lg:top-24 space-y-4">
-              <div className="rounded-2xl bg-card ring-1 ring-border shadow-xl shadow-primary/5 overflow-hidden">
+              <div className="dose-label overflow-hidden p-0">
                 <div className="p-6 pb-5">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-extrabold tracking-tight">
+                    <span className="font-display text-3xl font-bold tracking-[-0.03em]">
                       Free
                     </span>
                     <span className="text-sm text-muted-foreground">
@@ -284,12 +287,12 @@ export default async function CoursePage({
                   </ul>
                 </div>
 
-                <div className="p-6 pt-0 space-y-3 border-t border-border">
+                <div className="border-t border-rule p-6 pt-0">
                   <div className="pt-5">
                     {!clerkId ? (
                       <Link
                         href="/sign-in"
-                        className="btn btn-primary btn-lg w-full gap-2 shadow-md shadow-primary/25"
+                        className="btn btn-primary btn-lg w-full gap-2 "
                       >
                         Sign In to Enroll
                         <ArrowRight className="h-4 w-4" />
@@ -297,20 +300,20 @@ export default async function CoursePage({
                     ) : isEnrolled ? (
                       <Link
                         href={`/course/learn/${id}`}
-                        className="btn btn-primary btn-lg w-full gap-2 shadow-md shadow-primary/25"
+                        className="btn btn-primary btn-lg w-full gap-2 "
                       >
                         Continue Learning
                         <ArrowRight className="h-4 w-4" />
                       </Link>
                     ) : (
-                      <EnrollButton courseId={id} className="btn-lg w-full shadow-md shadow-primary/25" />
+                      <EnrollButton courseId={id} className="btn-lg w-full " />
                     )}
 
                     <SaveCourseButton
                       courseId={id}
                       fullWidth
                       label="Save for later"
-                      className="mt-3 ring-1 ring-border hover:bg-muted"
+                      className="mt-3 border border-rule hover:bg-paper-2"
                     />
 
                     {clerkId === course.creator && (

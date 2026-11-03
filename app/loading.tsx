@@ -1,47 +1,25 @@
 export default function Loading() {
   return (
-    <div className="animate-pulse p-4 md:p-8 max-w-6xl mx-auto" aria-hidden="true">
-      {/* Header */}
-      <div className="mb-8 space-y-2">
-        <div className="h-8 w-64 rounded-full bg-muted dark:bg-muted"></div>
-        <div className="h-4 w-48 rounded-full bg-muted dark:bg-muted"></div>
+    <div className="mx-auto max-w-[1240px] animate-pulse p-5 md:p-8" aria-hidden="true">
+      <div className="mb-8 space-y-3">
+        <div className="h-9 w-72 rounded-[10px] bg-paper-3"></div>
+        <div className="h-4 w-56 rounded-full bg-paper-2"></div>
       </div>
 
-      {/* Course Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-4">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="card bg-card dark:bg-muted shadow-sm hover:shadow-md transition-shadow">
-            {/* Image */}
-            <figure>
-              <div className="aspect-video w-full bg-muted dark:bg-muted"></div>
-            </figure>
-            
-            {/* Content */}
-            <div className="card-body p-4">
-              <div className="h-5 w-3/4 rounded-full bg-muted dark:bg-muted mb-2"></div>
-              <div className="h-4 w-1/2 rounded-full bg-muted dark:bg-muted mb-3"></div>
-              
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 rounded-full bg-muted dark:bg-muted"></div>
-                  <div className="h-3 w-16 rounded-full bg-muted dark:bg-muted"></div>
-                </div>
-                <div className="h-6 w-16 rounded-full bg-muted dark:bg-muted"></div>
+          <div key={i} className="overflow-hidden rounded-[14px] border border-rule bg-card">
+            <div className="aspect-video w-full bg-paper-3"></div>
+            <div className="space-y-3 p-4">
+              <div className="h-5 w-3/4 rounded-full bg-paper-3"></div>
+              <div className="h-4 w-1/2 rounded-full bg-paper-2"></div>
+              <div className="flex items-center justify-between pt-2">
+                <div className="h-3 w-20 rounded-full bg-paper-2"></div>
+                <div className="h-6 w-16 rounded-full bg-paper-2"></div>
               </div>
             </div>
           </div>
         ))}
-      </div>
-      
-      {/* Pagination */}
-      <div className="flex justify-center mt-8">
-        <div className="join">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="join-item btn btn-sm btn-disabled w-10 h-10">
-              <div className="h-4 w-4 rounded-full bg-muted dark:bg-muted"></div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

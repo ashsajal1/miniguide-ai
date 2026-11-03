@@ -142,144 +142,111 @@ export default async function ProfilePage() {
   const isAdmin = dbUser.role === "ADMIN";
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-10 space-y-8">
-        {/* Header Section */}
-        <div className="rounded-2xl bg-card ring-1 ring-border shadow-xl shadow-primary/5 overflow-hidden">
-          <div className="px-6 py-6">
-            <div className="flex flex-col md:flex-row md:items-end gap-4 md:gap-6 text-center md:text-left">
-              <Image
-                src={user.imageUrl}
-                alt={user.fullName || "User"}
-                width={96}
-                height={96}
-                className="h-24 w-24 rounded-full ring-4 ring-card object-cover shadow-lg mx-auto md:mx-0"
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight truncate">
-                  {user.fullName}
-                </h1>
-                <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                  <span className="badge border-0 bg-primary/10 text-primary">
-                    {dbUser.level}
-                  </span>
-                  <span className="badge border-0 bg-secondary/10 text-secondary">
-                    {dbUser.xp} XP
-                  </span>
-                  {isAdmin && (
-                    <span className="badge border-0 bg-warning/10 text-warning gap-1">
-                      <ShieldCheck className="h-3 w-3" />
-                      Admin
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="w-full md:w-auto flex flex-row md:flex-col justify-center gap-2 shrink-0">
+    <div className="min-h-screen">
+      <div className="mx-auto max-w-[1080px] space-y-8 px-5 py-10 sm:px-8">
+        {/* Header */}
+        <div className="rounded-[14px] border border-rule bg-card p-6 sm:p-7">
+          <div className="flex flex-col gap-5 text-center md:flex-row md:items-center md:gap-6 md:text-left">
+            <Image
+              src={user.imageUrl}
+              alt={user.fullName || "User"}
+              width={96}
+              height={96}
+              className="mx-auto h-20 w-20 rounded-full border-2 border-rule object-cover md:mx-0"
+            />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-[clamp(1.7rem,3vw,2.4rem)] text-foreground">
+                {user.fullName}
+              </h1>
+              <div className="mt-2 flex flex-wrap justify-center gap-2 md:justify-start">
+                <span className="badge badge-primary">{dbUser.level}</span>
+                <span className="badge border-0 bg-paper-2 font-mono text-ink-2">{dbUser.xp} XP</span>
                 {isAdmin && (
-                  <Link href="/admin" className="btn btn-secondary btn-sm gap-1.5">
-                    <ShieldCheck className="h-4 w-4" />
-                    Admin Dashboard
-                  </Link>
+                  <span className="badge border-0 bg-ink text-paper gap-1">
+                    <ShieldCheck className="h-3 w-3" aria-hidden />
+                    Admin
+                  </span>
                 )}
-                <LogoutButton />
               </div>
+            </div>
+            <div className="flex shrink-0 flex-row justify-center gap-2 md:flex-col">
+              {isAdmin && (
+                <Link href="/admin" className="btn btn-outline btn-sm gap-1.5">
+                  <ShieldCheck className="h-4 w-4" aria-hidden />
+                  Admin dashboard
+                </Link>
+              )}
+              <LogoutButton />
             </div>
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
-            {
-              icon: BookOpen,
-              label: "Courses Enrolled",
-              value: enrolledCourses.length,
-              iconClass: "bg-primary/10 text-primary",
-            },
-            {
-              icon: PlayCircle,
-              label: "In Progress",
-              value: courses.length,
-              iconClass: "bg-info/10 text-info",
-            },
-            {
-              icon: Award,
-              label: "Modules Completed",
-              value: dbUser.modules_progress.filter((p) => p.is_completed).length,
-              iconClass: "bg-success/10 text-success",
-            },
-            {
-              icon: Zap,
-              label: "Total XP",
-              value: dbUser.xp,
-              iconClass: "bg-warning/10 text-warning",
-            },
+            { icon: BookOpen, label: "Courses enrolled", value: enrolledCourses.length },
+            { icon: PlayCircle, label: "In progress", value: courses.length },
+            { icon: Award, label: "Modules completed", value: dbUser.modules_progress.filter((p) => p.is_completed).length },
+            { icon: Zap, label: "Total XP", value: dbUser.xp },
           ].map((stat) => (
             <div
               key={stat.label}
-              className="rounded-2xl bg-card ring-1 ring-border p-4 sm:p-5 flex items-center gap-3.5 hover:shadow-md hover:shadow-primary/5 transition-shadow"
+              className="flex items-center gap-3 rounded-[14px] border border-rule bg-card p-4"
             >
-              <span className={`grid place-items-center h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-xl ${stat.iconClass}`}>
-                <stat.icon className="h-5 w-5 sm:h-6 sm:w-6" />
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-accent-soft text-accent-deep">
+                <stat.icon className="h-5 w-5" aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-xl sm:text-2xl font-extrabold tracking-tight leading-none">
-                  {stat.value}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1 truncate">
-                  {stat.label}
-                </p>
+                <p className="font-mono text-xl font-medium leading-none text-foreground">{stat.value}</p>
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">{stat.label}</p>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Enrolled Courses Section */}
+        {/* Enrolled courses */}
         <section className="space-y-4">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="text-2xl font-bold tracking-tight">Enrolled Courses</h2>
-            <span className="text-sm text-muted-foreground">
-              {enrolledCourses.length}{" "}
-              {enrolledCourses.length === 1 ? "course" : "courses"}
+            <h2 className="text-xl text-foreground">Enrolled courses</h2>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {enrolledCourses.length} {enrolledCourses.length === 1 ? "course" : "courses"}
             </span>
           </div>
           {enrolledCourses.length === 0 ? (
-            <div className="rounded-2xl bg-card ring-1 ring-border p-10 text-center">
-              <BookOpen className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-              <p className="text-muted-foreground mb-4">
+            <div className="rounded-[14px] border border-rule bg-card p-10 text-center">
+              <BookOpen className="mx-auto mb-3 h-9 w-9 text-muted-foreground/50" aria-hidden />
+              <p className="mb-4 text-sm text-muted-foreground">
                 You haven&apos;t enrolled in any courses yet.
               </p>
-              <Link href="/" className="btn btn-primary btn-sm gap-1.5 mx-auto">
-                Browse Courses
-                <ArrowRight className="h-4 w-4" />
+              <Link href="/" className="btn btn-primary btn-sm gap-1.5">
+                Browse courses
+                <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {enrolledCourses.map((course) => (
                 <div
                   key={course.id}
-                  className="group rounded-2xl bg-card ring-1 ring-border overflow-hidden flex flex-col hover:shadow-lg hover:shadow-primary/5 transition-shadow"
+                  className="flex flex-col overflow-hidden rounded-[14px] border border-rule bg-card"
                 >
                   <div className="flex-1 p-5">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold leading-snug line-clamp-1 group-hover:text-primary transition-colors">
-                        {course.name}
-                      </h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                    <h3 className="mb-1.5 line-clamp-1 text-[16px] font-medium text-foreground">
+                      {course.name}
+                    </h3>
+                    <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
                       {course.description}
                     </p>
                     <div className="flex flex-wrap gap-2">
                       <span className="badge badge-outline">{course.difficulty}</span>
                       {course.is_completed ? (
-                        <span className="badge badge-success border-0">Completed</span>
+                        <span className="badge badge-primary">Completed</span>
                       ) : (
-                        <span className="badge badge-warning border-0">In Progress</span>
+                        <span className="badge border-0 bg-paper-2 text-ink-2">In progress</span>
                       )}
                     </div>
                   </div>
-                  <div className="px-5 pb-5 pt-0">
+                  <div className="px-5 pb-5">
                     <a
                       href={`/course/learn/${course.id}`}
                       className={`btn btn-sm w-full gap-1.5 ${
@@ -287,7 +254,7 @@ export default async function ProfilePage() {
                       }`}
                     >
                       {course.is_completed ? "Review" : "Continue"}
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-4 w-4" aria-hidden />
                     </a>
                   </div>
                 </div>
@@ -296,13 +263,8 @@ export default async function ProfilePage() {
           )}
         </section>
 
-        {/* Saved Courses Section */}
         <SavedCoursesSection />
-
-        {/* Course Progress List - Shown Second */}
         <CourseProgressSection courses={courses} />
-
-        {/* Created Courses Section */}
         <CreatedCoursesSection courses={createdCourses} />
       </div>
     </div>

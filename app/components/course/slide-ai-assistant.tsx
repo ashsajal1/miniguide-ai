@@ -86,7 +86,7 @@ export default function SlideAiAssistant({
           <div>
             <label className="mb-1.5 flex items-center justify-between text-sm">
               <span className="font-medium">Slide Topic</span>
-              <span className="text-xs text-foreground/50">Required</span>
+              <span className="text-xs text-muted-foreground">Required</span>
             </label>
             <textarea
               value={prompt}
@@ -105,12 +105,12 @@ export default function SlideAiAssistant({
                 <FileText className="h-3.5 w-3.5" />
                 Documentation
               </span>
-              <span className="text-xs text-foreground/50">Optional</span>
+              <span className="text-xs text-muted-foreground">Optional</span>
             </label>
             <textarea
               value={docs}
               onChange={(e) => setDocs(e.target.value)}
-              placeholder="Paste any reference docs or context here..."
+              placeholder="Paste any reference docs or context here…"
               className="textarea textarea-bordered w-full resize-none font-mono text-xs"
               rows={4}
               disabled={isGenerating}
@@ -135,7 +135,7 @@ export default function SlideAiAssistant({
             {isGenerating ? (
               <>
                 <span className="loading loading-spinner loading-xs"></span>
-                Generating...
+                Generating…
               </>
             ) : (
               <>

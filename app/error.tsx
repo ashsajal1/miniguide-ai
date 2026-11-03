@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
+import { Home, RefreshCw } from 'lucide-react';
 
 export default function Error({
   error,
@@ -12,72 +12,53 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log the error to an error reporting service
     console.error(error);
   }, [error]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-card">
-      <div className="max-w-2xl w-full text-center">
-        {/* Error Icon */}
-        <div className="mx-auto w-20 h-20 flex items-center justify-center rounded-full bg-error/10 text-error mb-6">
-          <AlertTriangle className="w-10 h-10" />
-        </div>
-
-        {/* Error Message */}
-        <h1 className="text-3xl font-bold text-error-content mb-4">
-          Something went wrong!
+    <div className="flex min-h-screen flex-col items-center justify-center p-6">
+      <div className="w-full max-w-xl">
+        <p className="text-[11px] text-muted-foreground">Error</p>
+        <h1 className="mt-3 text-[clamp(2rem,4vw,3.2rem)] text-foreground">
+          Something went wrong.
         </h1>
-        
-        <p className="text-lg text-muted-foreground mb-8">
-          We apologize for the inconvenience. An unexpected error has occurred.
+
+        <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+          An unexpected error stopped this page. Trying again usually settles it.
         </p>
 
-        <div className="bg-muted dark:bg-muted rounded-lg p-4 mb-8 text-left">
-          <p className="font-mono text-sm text-error">
+        <div className="mt-6 rounded-[10px] border border-rule bg-paper-2 p-4">
+          <p className="font-mono text-[12px] text-ink-2">
             {error.message || 'An unknown error occurred'}
           </p>
           {error.digest && (
-            <p className="mt-2 text-xs opacity-75">
-              Error ID: {error.digest}
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              Reference {error.digest}
             </p>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={reset}
-            className="btn btn-primary gap-2"
-            aria-label="Try again"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Try Again
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <button onClick={reset} className="btn btn-primary gap-2" aria-label="Try again">
+            <RefreshCw className="h-4 w-4" aria-hidden />
+            Try again
           </button>
-          
+
           <Link href="/" className="btn btn-outline gap-2">
-            <Home className="w-4 h-4" />
-            Back to Home
+            <Home className="h-4 w-4" aria-hidden />
+            Back to home
           </Link>
         </div>
 
-        {/* Contact Support */}
-        <div className="mt-12 pt-6 border-t border">
-          <p className="text-muted-foreground mb-4">
-            If the problem persists, please contact our support team.
+        <div className="mt-12 border-t border-rule pt-6">
+          <p className="mb-3 text-sm text-muted-foreground">
+            If the problem persists, contact support.
           </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <a
-              href="/contact"
-              className="link link-hover text-primary flex items-center gap-1"
-            >
-              Contact Support
-            </a>
-            <span className="text-foreground/30 hidden sm:inline">•</span>
-            <a
-              href="mailto:support@minicourse.com"
-              className="link link-hover text-primary flex items-center gap-1"
-            >
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <Link href="/contact" className="font-medium text-accent-deep hover:underline">
+              Contact support
+            </Link>
+            <a href="mailto:support@minicourse.com" className="font-medium text-accent-deep hover:underline">
               support@minicourse.com
             </a>
           </div>

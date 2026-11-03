@@ -73,7 +73,7 @@ export default function EditQuestionPage() {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading…</div>;
   }
 
   if (!questionData) {

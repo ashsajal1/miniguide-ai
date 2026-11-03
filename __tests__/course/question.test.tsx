@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Question from "@/app/components/course/question";
-import { Prisma } from "@prisma/client";
+import { Prisma } from "@/generated/prisma";
 
 type QuestionWithOptions = Prisma.QuestionGetPayload<{
   include: {
@@ -91,67 +91,87 @@ describe("Question Component", () => {
   it("allows selecting an option", () => {
     render(<Question question={mockQuestion} />);
 
-    const optionA = screen.getByText("Option A");
-    fireEvent.click(optionA);
+    fireEvent.click(screen.getByRole("radio", { name: /option a/i }));
 
-    // Check if styled as selected (checking class might be brittle, but looking for visual feedback logic)
-    // The component applies 'border-primary bg-primary/10' when selected
-    // Better to check if the button is enabled now
     const submitBtn = screen.getByRole("button", { name: /submit answer/i });
     expect(submitBtn).not.toBeDisabled();
   });
 
-  it("toggles selection when clicking the same option", () => {
+  it("keeps a single selection", () => {
     render(<Question question={mockQuestion} />);
 
-    const optionA = screen.getByText("Option A");
+    const optionA = screen.getByRole("radio", { name: /option a/i });
+    const optionB = screen.getByRole("radio", { name: /option b/i });
 
-    // Select
     fireEvent.click(optionA);
-    const submitBtn = screen.getByRole("button", { name: /submit answer/i });
-    expect(submitBtn).not.toBeDisabled();
+    expect(optionA).toBeChecked();
 
-    // Deselect
-    fireEvent.click(optionA);
-    expect(submitBtn).toBeDisabled(); // Should be disabled again if nothing is selected
+    fireEvent.click(optionB);
+    expect(optionB).toBeChecked();
+    expect(optionA).not.toBeChecked();
   });
 
   it("shows correct feedback when submitting correct answer", () => {
     render(<Question question={mockQuestion} />);
 
-    const optionA = screen.getByText("Option A"); // Correct option (now)
-    fireEvent.click(optionA);
+    fireEvent.click(screen.getByRole("radio", { name: /option a/i }));
+    fireEvent.click(screen.getByRole("button", { name: /submit answer/i }));
 
-    const submitBtn = screen.getByRole("button", { name: /submit answer/i });
-    fireEvent.click(submitBtn);
-
-    expect(screen.getByText("Correct! Well done!")).toBeInTheDocument();
-    expect(screen.getByText("Explanation:")).toBeInTheDocument();
+    expect(screen.getByText("Correct.")).toBeInTheDocument();
+    expect(screen.getByText("Explanation")).toBeInTheDocument();
     expect(
       screen.getByText("General explanation for the question.")
     ).toBeInTheDocument();
-
-    // Button changes to "Answer Submitted"
+    expect(screen.getByText("Correct answer")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /answer submitted/i })
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: /submit answer/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /try again/i })
+    ).not.toBeInTheDocument();
   });
 
-  it("shows incorrect feedback when submitting wrong answer", () => {
+  it("shows incorrect feedback and allows another attempt", () => {
     render(<Question question={mockQuestion} />);
 
-    const optionB = screen.getByText("Option B"); // Wrong option (now)
-    fireEvent.click(optionB);
+    fireEvent.click(screen.getByRole("radio", { name: /option b/i }));
+    fireEvent.click(screen.getByRole("button", { name: /submit answer/i }));
 
-    const submitBtn = screen.getByRole("button", { name: /submit answer/i });
-    fireEvent.click(submitBtn);
-
-    expect(
-      screen.getByText("Incorrect. Please try again.")
-    ).toBeInTheDocument();
-
+    expect(screen.getByText("Not quite.")).toBeInTheDocument();
     expect(
       screen.getByText("General explanation for the question.")
     ).toBeInTheDocument();
+    expect(screen.getByText("Your answer")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+
+    expect(screen.queryByText("Not quite.")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /submit answer/i })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("radio", { name: /option a/i })
+    ).toBeEnabled();
+  });
+
+  it("renders inline markdown in the prompt and options", () => {
+    const markdownQuestion: QuestionWithOptions = {
+      ...mockQuestion,
+      content: "Which hook runs **side effects**?",
+      options: [
+        {
+          ...mockOptions[0],
+          text: "It runs `useEffect` after render.",
+        },
+        ...mockOptions.slice(1),
+      ],
+    };
+
+    render(<Question question={markdownQuestion} />);
+
+    const code = screen.getByText("useEffect");
+    expect(code.tagName).toBe("CODE");
+    expect(screen.getByText("side effects").tagName).toBe("STRONG");
+    expect(screen.queryByText(/`/)).not.toBeInTheDocument();
   });
 });

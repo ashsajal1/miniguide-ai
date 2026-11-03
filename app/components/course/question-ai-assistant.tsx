@@ -132,12 +132,12 @@ export default function QuestionAiAssistant({
             type="button"
             onClick={handleGenerate}
             disabled={!hasSlideContent || isGenerating || isSubmitting}
-            className="btn btn-primary btn-sm w-full gap-2"
+            className="btn btn-primary btn-sm w-full gap-2 nowrap"
           >
             {isGenerating ? (
               <>
-                <span className="loading loading-spinner loading-xs"></span>
-                Generating MCQ...
+                <span className="loading loading-sm" aria-hidden></span>
+                Generating MCQ…
               </>
             ) : (
               <>

@@ -38,6 +38,7 @@ export interface ModuleAiContext {
 export interface GenerationState {
   slides?: { module?: string; title: string }[];
   questions?: { module?: string; title: string }[];
+  written?: { module?: string; title: string }[];
 }
 
 /** Optional scope a caller can pass; ids are resolved against the database. */
@@ -113,7 +114,10 @@ export function buildCoursePromptContext(
 export function buildStatePromptContext(state?: GenerationState): string {
   const slides = state?.slides ?? [];
   const questions = state?.questions ?? [];
-  if (slides.length === 0 && questions.length === 0) return "";
+  const written = state?.written ?? [];
+  if (slides.length === 0 && questions.length === 0 && written.length === 0) {
+    return "";
+  }
 
   const lines: string[] = [
     "ALREADY GENERATED IN THIS COURSE (never repeat these - build on them and keep the same terminology):",
@@ -127,6 +131,11 @@ export function buildStatePromptContext(state?: GenerationState): string {
   for (const question of questions.slice(-MAX_STATE_ITEMS)) {
     lines.push(
       `  - Question${question.module ? ` in "${question.module}"` : ""}: "${question.title}"`
+    );
+  }
+  for (const item of written.slice(-MAX_STATE_ITEMS)) {
+    lines.push(
+      `  - Written task${item.module ? ` in "${item.module}"` : ""}: "${item.title}"`
     );
   }
 
@@ -156,6 +165,7 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
               type: true,
               slide: { select: { title: true, content: true } },
               question: { select: { title: true, content: true } },
+              written: { select: { title: true } },
             },
           },
         },
@@ -178,7 +188,7 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
     roadmap,
   };
 
-  const state: GenerationState = { slides: [], questions: [] };
+  const state: GenerationState = { slides: [], questions: [], written: [] };
   let previousSlideContent: string | null = null;
 
   for (const mod of course.modules) {
@@ -192,6 +202,8 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
         }
       } else if (item.type === "QUESTION" && item.question) {
         state.questions!.push({ module: mod.title, title: item.question.title ?? "Untitled question" });
+      } else if (item.type === "WRITTEN" && item.written) {
+        state.written!.push({ module: mod.title, title: item.written.title ?? "Written task" });
       }
     }
   }

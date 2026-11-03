@@ -8,12 +8,14 @@ import {
   Trash2,
   GripVertical,
   Pencil,
+  PenLine,
 } from "lucide-react";
 import type { Module } from "@/generated/prisma";
 import {
   deleteModule,
   deleteSlide,
   deleteQuestion,
+  deleteWritten,
   reorderContent,
   reorderModules,
 } from "./actions";
@@ -39,7 +41,7 @@ const EditModuleDialog = dynamic(
   { ssr: false }
 );
 
-type DeleteType = "module" | "slide" | "question";
+type DeleteType = "module" | "slide" | "question" | "written";
 
 interface DeleteState {
   isOpen: boolean;
@@ -51,7 +53,7 @@ interface DeleteState {
 
 type ContentItem = {
   id: string;
-  type: "SLIDE" | "QUESTION" | null;
+  type: "SLIDE" | "QUESTION" | "WRITTEN" | null;
   order: number;
   slide: { id: string; title: string | null; content: string } | null;
   question: {
@@ -65,7 +67,44 @@ type ContentItem = {
       explanation: string | null;
     }[];
   } | null;
+  written: {
+    id: string;
+    title: string | null;
+    prompt: string;
+    guidance: string | null;
+  } | null;
 };
+
+function itemMeta(item: ContentItem) {
+  if (item.slide) {
+    return {
+      kind: "slide" as const,
+      label: "Slide",
+      id: item.slide.id,
+      title: item.slide.title,
+      body: item.slide.content,
+    };
+  }
+  if (item.question) {
+    return {
+      kind: "question" as const,
+      label: "Question",
+      id: item.question.id,
+      title: item.question.title,
+      body: item.question.content,
+    };
+  }
+  if (item.written) {
+    return {
+      kind: "written" as const,
+      label: "Written",
+      id: item.written.id,
+      title: item.written.title,
+      body: item.written.prompt,
+    };
+  }
+  return null;
+}
 
 type ModuleWithItems = Module & {
   content: ContentItem[];
@@ -143,6 +182,11 @@ export default function Modules({
         case "question":
           const questionResponse = await deleteQuestion(id);
           success = questionResponse.success;
+          break;
+
+        case "written":
+          const writtenResponse = await deleteWritten(id);
+          success = writtenResponse.success;
           break;
       }
 
@@ -227,7 +271,7 @@ export default function Modules({
       <div className="text-center py-12">
         <div className="max-w-md mx-auto">
           <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-            <Plus className="w-12 h-12 text-foreground/30" />
+            <Plus className="w-12 h-12 text-muted-foreground" />
           </div>
           <h2 className="text-2xl font-bold mb-2">No modules yet</h2>
           <p className="text-muted-foreground mb-6">
@@ -297,7 +341,7 @@ export default function Modules({
                           <div className="flex items-start gap-3 flex-1">
                             <div
                               {...provided.dragHandleProps}
-                              className="mt-2 cursor-grab active:cursor-grabbing text-foreground/40 hover:text-foreground"
+                              className="mt-2 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
                             >
                               <GripVertical className="w-5 h-5" />
                             </div>
@@ -310,7 +354,7 @@ export default function Modules({
                               </h3>
                               <div className="flex items-center gap-3 mt-2">
                                 <div className="badge badge-outline gap-2">
-                                  <svg
+                                  <svg aria-hidden
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-3 w-3"
                                     fill="none"
@@ -328,7 +372,7 @@ export default function Modules({
                                   Slides
                                 </div>
                                 <div className="badge badge-outline gap-2">
-                                  <svg
+                                  <svg aria-hidden
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-3 w-3"
                                     fill="none"
@@ -347,6 +391,14 @@ export default function Modules({
                                       .length
                                   }{" "}
                                   Questions
+                                </div>
+                                <div className="badge badge-outline gap-2">
+                                  <PenLine className="h-3 w-3" aria-hidden />
+                                  {
+                                    module.content.filter((c) => c.written)
+                                      .length
+                                  }{" "}
+                                  Written
                                 </div>
                               </div>
                             </div>
@@ -399,6 +451,13 @@ export default function Modules({
                                 <Plus className="w-4 h-4" />
                                 Add Question
                               </Link>
+                              <Link
+                                href={`/course/edit/${courseId}/written?moduleId=${module.id}`}
+                                className="btn btn-outline btn-sm gap-2"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Add Written
+                              </Link>
                               <div className="flex-1"></div>
                               <button
                                 className="btn btn-ghost btn-sm text-error gap-2"
@@ -424,10 +483,9 @@ export default function Modules({
                                   className="space-y-2"
                                 >
                                   {module.content.map((item, index) => {
-                                    const isSlide = !!item.slide;
-                                    const contentData =
-                                      item.slide || item.question;
-                                    if (!contentData) return null;
+                                    const meta = itemMeta(item);
+                                    if (!meta) return null;
+                                    const fallbackTitle = `Untitled ${meta.label.toLowerCase()}`;
 
                                     return (
                                       <Draggable
@@ -439,47 +497,34 @@ export default function Modules({
                                           <div
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            className="card bg-muted hover:bg-muted transition-colors"
+                                            className="rounded-[10px] border border-rule bg-paper hover:bg-paper-2 transition-colors"
                                           >
                                             <div className="card-body p-4">
                                               <div className="flex items-center gap-4">
                                                 <div
                                                   {...provided.dragHandleProps}
-                                                  className="cursor-grab active:cursor-grabbing text-foreground/40 hover:text-foreground"
+                                                  className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"
                                                 >
                                                   <GripVertical className="w-5 h-5" />
                                                 </div>
                                                 <div className="flex-1">
                                                   <div className="flex items-center gap-2 mb-1">
                                                     <span className="badge badge-sm badge-ghost">
-                                                      {isSlide
-                                                        ? "Slide"
-                                                        : "Question"}
+                                                      {meta.label}
                                                     </span>
                                                     <h5 className="font-medium">
-                                                      {contentData.title ||
-                                                        `Untitled ${
-                                                          isSlide
-                                                            ? "Slide"
-                                                            : "Question"
-                                                        }`}
+                                                      {meta.title || fallbackTitle}
                                                     </h5>
                                                   </div>
-                                                  {contentData.content && (
+                                                  {meta.body && (
                                                     <p className="text-sm text-muted-foreground line-clamp-1">
-                                                      {contentData.content}
+                                                      {meta.body}
                                                     </p>
                                                   )}
                                                 </div>
                                                 <div className="flex gap-2">
                                                   <Link
-                                                    href={`/course/edit/${
-                                                      module.id
-                                                    }/${
-                                                      isSlide
-                                                        ? "slide"
-                                                        : "question"
-                                                    }/${contentData.id}`}
+                                                    href={`/course/edit/${courseId}/${meta.kind}/${meta.id}`}
                                                     className="btn btn-ghost btn-xs"
                                                   >
                                                     Edit
@@ -488,16 +533,9 @@ export default function Modules({
                                                     className="btn btn-ghost btn-xs text-error"
                                                     onClick={() =>
                                                       openDeleteDialog(
-                                                        isSlide
-                                                          ? "slide"
-                                                          : "question",
-                                                        contentData.id, // Use the slide/question ID for deletion
-                                                        contentData.title ||
-                                                          `Untitled ${
-                                                            isSlide
-                                                              ? "Slide"
-                                                              : "Question"
-                                                          }`,
+                                                        meta.kind,
+                                                        meta.id,
+                                                        meta.title || fallbackTitle,
                                                         module.id
                                                       )
                                                     }

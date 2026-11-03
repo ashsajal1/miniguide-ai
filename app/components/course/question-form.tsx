@@ -230,7 +230,7 @@ export default function QuestionForm({
             !options.some((opt) => opt.isCorrect)
           }
         >
-          {isSubmitting ? "Saving..." : submitButtonText}
+          {isSubmitting ? "Saving…" : submitButtonText}
         </button>
       </div>
     </form>

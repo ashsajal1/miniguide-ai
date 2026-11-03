@@ -1,60 +1,21 @@
 export default function Loading() {
   return (
-    <div className="animate-pulse space-y-8 p-4 md:p-8" aria-hidden="true">
-      {/* Header Section */}
-      <div className="flex flex-col space-y-4">
-        <div className="h-8 w-3/4 rounded-full bg-muted dark:bg-muted"></div>
-        <div className="h-4 w-1/2 rounded-full bg-muted dark:bg-muted"></div>
-        
-        <div className="flex items-center space-x-4 pt-2">
-          <div className="avatar">
-            <div className="w-10 h-10 rounded-full bg-muted dark:bg-muted"></div>
-          </div>
-          <div className="h-4 w-1/4 rounded-full bg-muted dark:bg-muted"></div>
-          <div className="h-4 w-1/4 rounded-full bg-muted dark:bg-muted"></div>
+    <div className="mx-auto max-w-[1240px] animate-pulse space-y-8 px-5 py-10 sm:px-8" aria-hidden="true">
+      <div className="space-y-4">
+        <div className="h-8 w-3/4 rounded-[10px] bg-paper-3"></div>
+        <div className="h-4 w-1/2 rounded-full bg-paper-2"></div>
+        <div className="flex items-center gap-4 pt-2">
+          <div className="h-10 w-10 rounded-full bg-paper-3"></div>
+          <div className="h-4 w-28 rounded-full bg-paper-2"></div>
+          <div className="h-4 w-28 rounded-full bg-paper-2"></div>
         </div>
       </div>
-
-      {/* Course Image */}
-      <div className="aspect-video w-full rounded-lg bg-muted dark:bg-muted"></div>
-
-      {/* Course Content */}
-      <div className="space-y-4 pt-4">
-        <div className="h-6 w-1/3 rounded-full bg-muted dark:bg-muted"></div>
-        <div className="space-y-2">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-4 w-full rounded-full bg-muted dark:bg-muted"></div>
-          ))}
-          <div className="h-4 w-5/6 rounded-full bg-muted dark:bg-muted"></div>
-        </div>
-      </div>
-
-      {/* Modules Section */}
-      <div className="space-y-4 pt-4">
-        <div className="h-6 w-1/4 rounded-full bg-muted dark:bg-muted"></div>
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="card bg-muted dark:bg-muted shadow-sm">
-              <div className="card-body p-4">
-                <div className="flex justify-between items-center">
-                  <div className="h-5 w-1/3 rounded-full bg-muted dark:bg-muted"></div>
-                  <div className="h-4 w-16 rounded-full bg-muted dark:bg-muted"></div>
-                </div>
-                <div className="h-4 w-5/6 rounded-full bg-muted dark:bg-muted mt-2"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-4 pt-4">
-        <div className="btn btn-primary w-full sm:w-auto">
-          <div className="h-4 w-20 bg-card/50 rounded-full"></div>
-        </div>
-        <div className="btn btn-outline w-full sm:w-auto opacity-50">
-          <div className="h-4 w-16 bg-muted/50 rounded-full"></div>
-        </div>
+      <div className="aspect-[16/6] w-full rounded-[14px] bg-paper-3"></div>
+      <div className="space-y-3">
+        <div className="h-6 w-1/3 rounded-full bg-paper-3"></div>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-4 w-full rounded-full bg-paper-2"></div>
+        ))}
       </div>
     </div>
   );

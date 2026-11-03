@@ -8,6 +8,7 @@ import {
   FileText,
   HelpCircle,
   Eye,
+  PenLine,
   Settings,
 } from "lucide-react";
 
@@ -43,6 +44,14 @@ export default async function ManageCourse({
                       explanation: true,
                     },
                   },
+                },
+              },
+              written: {
+                select: {
+                  id: true,
+                  title: true,
+                  prompt: true,
+                  guidance: true,
                 },
               },
             },
@@ -84,9 +93,13 @@ export default async function ManageCourse({
     (sum, module) => sum + module.content.filter((c) => c.question).length,
     0
   );
+  const totalWritten = course.modules.reduce(
+    (sum, module) => sum + module.content.filter((c) => c.written).length,
+    0
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-200 to-base-300">
+    <div className="min-h-screen bg-background">
       {/* Top Navigation Bar */}
       <div className="bg-card border-b border sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -121,11 +134,11 @@ export default async function ManageCourse({
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-4">
             {/* Course Info Card */}
-            <div className="card bg-card shadow-xl">
+            <div className="card bg-card">
               <div className="card-body">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
-                    <BookOpen className="w-7 h-7 text-primary-content" />
+                  <div className="w-14 h-14 rounded-xl bg-accent flex items-center justify-center shadow-lg">
+                    <BookOpen className="w-7 h-7 text-accent-ink" aria-hidden />
                   </div>
                   <div className="flex-1">
                     <h2 className="font-bold text-lg line-clamp-2">
@@ -138,7 +151,7 @@ export default async function ManageCourse({
 
                 <div className="space-y-3">
                   <div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                    <div className="text-xs text-muted-foreground  mb-1">
                       Difficulty
                     </div>
                     <div
@@ -156,7 +169,7 @@ export default async function ManageCourse({
 
                   {course.description && (
                     <div>
-                      <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">
+                      <div className="text-xs text-muted-foreground  mb-1">
                         Description
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-3">
@@ -175,9 +188,9 @@ export default async function ManageCourse({
             />
 
             {/* Stats Cards */}
-            <div className="card bg-card shadow-xl">
+            <div className="card bg-card">
               <div className="card-body">
-                <h3 className="font-bold text-sm text-muted-foreground uppercase tracking-wide mb-3">
+                <h3 className="font-bold text-sm text-muted-foreground  mb-3">
                   Content Stats
                 </h3>
                 <div className="space-y-3">
@@ -216,6 +229,18 @@ export default async function ManageCourse({
                       {totalQuestions}
                     </span>
                   </div>
+
+                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center">
+                        <PenLine className="w-4 h-4 text-warning" />
+                      </div>
+                      <span className="text-sm font-medium">Written</span>
+                    </div>
+                    <span className="text-2xl font-bold text-warning">
+                      {totalWritten}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,7 +248,7 @@ export default async function ManageCourse({
 
           {/* Main Content Area */}
           <div className="lg:col-span-3">
-            <div className="card bg-card shadow-xl">
+            <div className="card bg-card">
               <div className="card-body">
                 <Modules
                   modules={course.modules ?? []}

@@ -1,45 +1,32 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Moon, Sun, Monitor } from "lucide-react"
-import { useTheme } from "next-themes"
+import { Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
+import { cn } from "@/lib/utils";
 
-const THEME_ORDER = ["light", "dark", "system"] as const
+// Two states, not three: the icon shows the appearance you are looking at and
+// one click always flips it, so the button never lands on an invisible stop.
+export function ModeToggle({ className }: { className?: string }) {
+  const { resolvedTheme, setTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
+  const label = isDark ? "Switch to light theme" : "Switch to dark theme";
 
-const THEME_META = {
-  light: { icon: Sun, label: "Light" },
-  dark: { icon: Moon, label: "Dark" },
-  system: { icon: Monitor, label: "System" },
-} as const
-
-export function ModeToggle() {
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <button className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-accent hover:text-accent-foreground" aria-label="Toggle theme" disabled>
-        <Sun className="h-[1.2rem] w-[1.2rem]" />
-      </button>
-    )
-  }
-
-  const current = (THEME_ORDER.includes(theme as never) ? theme : "system") as
-    | (typeof THEME_ORDER)[number]
-  const { icon: Icon, label } = THEME_META[current]
+  const toggle = () => {
+    setTheme(
+      document.documentElement.classList.contains("dark") ? "light" : "dark"
+    );
+  };
 
   return (
     <button
-      onClick={() => setTheme(THEME_ORDER[(THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length])}
-      className="inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-accent hover:text-accent-foreground"
-      aria-label={`Theme: ${label}. Click to switch`}
-      title={`Theme: ${label}`}
+      type="button"
+      onClick={toggle}
+      aria-label={label}
+      title={label}
+      className={cn("btn btn-ghost btn-sm h-9 w-9 shrink-0 px-0", className)}
     >
-      <Icon className="h-[1.2rem] w-[1.2rem]" />
+      <Sun aria-hidden className="hidden h-[18px] w-[18px] dark:block" />
+      <Moon aria-hidden className="block h-[18px] w-[18px] dark:hidden" />
     </button>
-  )
+  );
 }

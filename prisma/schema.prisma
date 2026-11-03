@@ -54,9 +54,10 @@ model Module {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  // Module can have multiple slides and questions, each with their own order
+  // Module can have multiple slides, questions and written tasks
   slides    Slide[]
   questions Question[]
+  written   Written[]
 
   // Module content items (polymorphic relation)
   content            Content[]
@@ -66,6 +67,7 @@ model Module {
 enum ContentType {
   SLIDE
   QUESTION
+  WRITTEN
 }
 
 // Polymorphic content item for module
@@ -79,6 +81,7 @@ model Content {
   // Relations to content items
   slide    Slide?    @relation("SlideToContent")
   question Question? @relation("QuestionToContent")
+  written  Written? @relation("WrittenToContent")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -137,6 +140,47 @@ model Option {
   @@index([questionId])
 }
 
+enum WrittenVerdict {
+  STRONG
+  PARTIAL
+  NEEDS_WORK
+}
+
+model Written {
+  id              String   @id @default(cuid())
+  title           String?
+  prompt          String
+  guidance        String?
+  module_id       String
+  module          Module   @relation(fields: [module_id], references: [id])
+  content_item    Content  @relation("WrittenToContent", fields: [content_item_id], references: [id])
+  content_item_id String   @unique
+  submissions     WrittenSubmission[]
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?
+}
+
+model WrittenSubmission {
+  id           String         @id @default(cuid())
+  answer       String
+  verdict      WrittenVerdict
+  score        Int
+  summary      String
+  strengths    String[]
+  gaps         String[]
+  model_answer String
+  user_id      String
+  user         User           @relation(fields: [user_id], references: [id])
+  written_id   String
+  written      Written        @relation(fields: [written_id], references: [id], onDelete: Cascade)
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+
+  @@unique([user_id, written_id])
+  @@index([written_id])
+}
+
 enum UserLevel {
   BEGINNER
   INTERMEDIATE
@@ -151,9 +195,10 @@ model User {
   level    UserLevel @default(BEGINNER)
   xp       Int       @default(0)
 
-  modules_progress UserModuleProgress[]
-  enrollments      Enrollment[]
-  ratings          Rating[]
+  modules_progress    UserModuleProgress[]
+  enrollments         Enrollment[]
+  ratings             Rating[]
+  writtenSubmissions  WrittenSubmission[]
 
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt

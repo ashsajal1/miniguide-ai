@@ -41,53 +41,44 @@ export async function generateSlideContent(
     );
     const stateContextBlock = buildStatePromptContext(context?.state);
 
-    const systemPrompt = `You are an expert educational content creator specializing in creating engaging, effective course slides. Generate comprehensive slide content in Markdown format.
+    const systemPrompt = `You write slide cards for a short guided course. A card teaches exactly one thing and reads in under a minute.
 
 ${courseContextBlock}
 
-CONSISTENCY RULES (this slide belongs to a guided course):
-- Stay on the scope of the current module: do not teach content the roadmap assigns to a later module, and do not re-explain what an earlier module already covered.
+CARD BRIEF:
+- Body copy: 40-80 words. One idea, one example, or one distinction per card. Never bundle several points into one card.
+- Pick the strongest single angle for the card: explain the idea, show a real-world example, or contrast it with a common mistake.
+- Title: at most 7 words, naming the idea rather than describing the card.
+- Body: 1-2 short paragraphs or at most 3 bullets. No extra headings.
+- Plain Markdown: a single H1 title, then the body. No tables, images, or code unless the idea needs them.
+
+WHAT TO LEAVE OUT:
+- No introductions, summaries, overviews, agenda, or "in this slide" framing.
+- No restating the learning objective as a sentence.
+- No closing questions, calls to action, or "next up" notes.
+- No statistics, quotes, citations, or facts that are not present in the source context. If the source does not give a number, do not invent one.
+
+CONSISTENCY RULES (this card belongs to a guided course):
+- Stay inside the current module: do not teach content the roadmap assigns to a later module, and do not re-explain what an earlier module already covered.
 - Reuse the course's established terms and naming; do not invent synonyms for concepts named in the context above.
-- Assume the learner has already seen every slide listed under ALREADY GENERATED; this slide must add new material, not repeat it.
+- Never repeat an idea listed under ALREADY GENERATED; each card must add new material.
 - Match the course's difficulty level and language.
 
-CONTENT REQUIREMENTS:
-- Create engaging, educational content suitable for online learning
-- Include 4-6 key points or concepts per slide (not just 1)
-- Use a mix of text, examples, and actionable insights
-- Make content memorable and practical
-- Include relevant statistics, quotes, or frameworks when appropriate
-- Structure content to facilitate learning and retention
+${stateContextBlock ? `${stateContextBlock}\n\n` : ""}${hasUrls ? "When URLs are provided, fetch and analyse the content from those URLs for accurate, current examples and data." : ""}
 
-FORMATTING RULES:
-- Use clear headings and subheadings
-- Bullet points for key concepts and lists
-- Bold important terms and **key takeaways**
-- Include practical examples or scenarios
-- End with 1-2 thought-provoking questions or action items
-- Keep total content to 150-200 words for readability
-
-EDUCATIONAL PRINCIPLES:
-- Start with what students already know, then build new knowledge
-- Include real-world applications and examples
-- Use active language and actionable insights
-- Connect concepts to broader learning objectives
-
-${stateContextBlock ? `${stateContextBlock}\n\n` : ""}${hasUrls ? "When URLs are provided, fetch and analyze the content from those URLs to create accurate, up-to-date slides with current examples and data." : ""}
-
-Output ONLY the markdown content for the slide with a clear title, nothing else.`;
+Output ONLY the card in Markdown: one H1 title followed by the body. Nothing else.`;
 
 
     const userPrompt = docs
-      ? `Based on the following documentation/context:\n\n${docs}\n\nCreate a slide about: ${prompt}`
-      : `Create a slide about: ${prompt}`;
+      ? `Based on the following documentation/context:\n\n${docs}\n\nCreate one card about: ${prompt}`
+      : `Create one card about: ${prompt}`;
 
     const { text } = await generateText({
       model: aiProvider.chatModel(model),
       system: systemPrompt,
       prompt: userPrompt,
       temperature: 0.7,
-      maxOutputTokens: 2048,
+      maxOutputTokens: 700,
     });
 
     let content = text;

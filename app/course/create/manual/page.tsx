@@ -1,43 +1,40 @@
 "use client";
 
-import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import CourseForm from "../course-form";
 import CourseOutlineEditor from "../course-outline-editor";
+import CreationSteps from "@/app/components/course/creation-steps";
+import GenerationView from "@/app/components/course/generation-view";
 import { CourseOutline } from "@/lib/course-ai-service";
 import { CourseFormData } from "../course-validation";
-import {
-  createCourseFromOutline,
-  CourseGenerationProgress,
-} from "@/lib/course-creation-service";
-import {
-  ArrowLeft,
-  FileText,
-  Pencil,
-  Sparkles,
-  CheckCircle,
-  Loader2,
-  AlertTriangle,
-  RotateCcw,
-} from "lucide-react";
+import { createCourseFromOutline } from "@/lib/course-creation-service";
+import { describeGenerationError } from "@/lib/course-generation-error";
+import { ArrowLeft, Loader2 } from "lucide-react";
+
+const STEPS = ["Details", "Outline", "Create"] as const;
 
 type Step = "course-form" | "outline-edit" | "course-generation";
 
-const STEPS: { key: Step; label: string; icon: typeof FileText }[] = [
-  { key: "course-form", label: "Course Details", icon: FileText },
-  { key: "outline-edit", label: "Edit Outline", icon: Pencil },
-  { key: "course-generation", label: "Generate", icon: Sparkles },
-];
+const STEP_INDEX: Record<Step, number> = {
+  "course-form": 0,
+  "outline-edit": 1,
+  "course-generation": 2,
+};
 
 export default function ManualCourseCreationPage() {
   return (
-    <div className="min-h-[calc(100vh-80px)]">
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="min-h-[calc(100vh-5rem)]">
+      <div className="mx-auto max-w-[1080px] px-5 py-12 sm:px-8">
         <Suspense
           fallback={
-            <div className="flex items-center justify-center py-32">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div
+              role="status"
+              aria-label="Loading course builder"
+              className="flex items-center justify-center py-32"
+            >
+              <Loader2 className="h-8 w-8 animate-spin text-accent" aria-hidden />
             </div>
           }
         >
@@ -52,14 +49,30 @@ function ManualCourseCreationFlow() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("course-form");
   const [outline, setOutline] = useState<CourseOutline | null>(null);
-  const [generationProgress, setGenerationProgress] =
-    useState<CourseGenerationProgress | null>(null);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [isBuilding, setIsBuilding] = useState(false);
   const [savedFormData, setSavedFormData] = useState<CourseFormData | null>(
     null
   );
 
-  const stepIndex = STEPS.findIndex((s) => s.key === step);
+  const stepIndex = STEP_INDEX[step];
+  const isGenerating = step === "course-generation";
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [step]);
+
+  useEffect(() => {
+    if (!isBuilding) return;
+
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [isBuilding]);
 
   const handleCourseFormSubmit = (data: CourseFormData) => {
     setSavedFormData(data);
@@ -73,124 +86,98 @@ function ManualCourseCreationFlow() {
           : `${hours}h`
         : `${minutes}m`;
 
-    const initialOutline: CourseOutline = {
+    setOutline({
       title: data.name,
       description: data.description,
       difficulty: data.difficulty as "Beginner" | "Intermediate" | "Advanced",
       estimatedDuration: durationStr,
       language: data.lang,
       modules: [],
-    };
-    setOutline(initialOutline);
+    });
     setStep("outline-edit");
   };
 
-  const handleOutlineChanged = (newOutline: CourseOutline) => {
-    setOutline(newOutline);
-  };
+  const handleOutlineChanged = useCallback((nextOutline: CourseOutline) => {
+    setOutline(nextOutline);
+  }, []);
 
   const handleProceedToGeneration = async () => {
     if (!outline) return;
 
-    setStep("course-generation");
     setGenerationError(null);
+    setStep("course-generation");
+    setIsBuilding(true);
 
     try {
-      setGenerationProgress({
-        stage: "creating-course",
-        progress: 50,
-        message: "Creating your course with modules, slides, and questions...",
-      });
-
       const result = await createCourseFromOutline(outline);
-
       if (result.success && result.course) {
         router.push(`/course/edit/${result.course.id}`);
-      } else {
-        setGenerationError(result.error || "Failed to generate course");
-        setStep("outline-edit");
+        return;
       }
+      setGenerationError(describeGenerationError(result.error));
     } catch {
       setGenerationError(
-        "An unexpected error occurred during course generation"
+        "The build stopped unexpectedly. Your outline is unchanged, so you can try again."
       );
-      setStep("outline-edit");
     } finally {
-      setGenerationProgress(null);
+      setIsBuilding(false);
     }
   };
 
+  const handleBack = () => {
+    setGenerationError(null);
+    setStep(step === "course-generation" ? "outline-edit" : "course-form");
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          Create Course Manually
-        </h1>
-        <p className="text-muted-foreground max-w-lg mx-auto">
-          Define your course details, build the outline, then generate the full
-          course.
-        </p>
-      </div>
+    <div>
+      {isGenerating ? (
+        <h1 className="sr-only">Create a course manually</h1>
+      ) : (
+        <>
+          <div className="max-w-[560px]">
+            <Link
+              href="/course/create"
+              prefetch={false}
+              className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Create course
+            </Link>
+            <h1 className="mt-4 font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.02] tracking-[-0.03em] text-foreground">
+              Create a course manually
+            </h1>
+            <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
+              Set the details, build the outline, then generate the slide cards,
+              questions, and written task.
+            </p>
+          </div>
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-center gap-2 sm:gap-3">
-        {STEPS.map((s, i) => {
-          const Icon = s.icon;
-          const isActive = i === stepIndex;
-          const isCompleted = i < stepIndex;
-          return (
-            <div key={s.key} className="flex items-center gap-2 sm:gap-3">
-              <div
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-300 ${
-                  isActive
-                    ? "bg-primary text-primary-content shadow-md shadow-primary/25"
-                    : isCompleted
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted text-foreground/40"
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : (
-                  <Icon className="h-4 w-4" />
+          <div className="mt-8 border-y border-rule py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <CreationSteps steps={STEPS} currentIndex={stepIndex} />
+              <div className="flex items-center justify-end gap-2">
+                <p role="status" className="sr-only">
+                  Step {stepIndex + 1} of {STEPS.length}: {STEPS[stepIndex]}
+                </p>
+                {stepIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleBack}
+                    disabled={isBuilding}
+                    className="btn btn-ghost btn-sm gap-1.5 text-muted-foreground"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                    Back
+                  </button>
                 )}
-                <span className="hidden sm:inline">{s.label}</span>
               </div>
-              {i < STEPS.length - 1 && (
-                <div
-                  className={`w-6 sm:w-10 h-0.5 rounded-full transition-colors duration-300 ${
-                    i < stepIndex ? "bg-primary" : "bg-muted"
-                  }`}
-                />
-              )}
             </div>
-          );
-        })}
-      </div>
-
-      {/* Back Button */}
-      {step === "outline-edit" && (
-        <button
-          className="btn btn-ghost btn-sm gap-1 mb-4"
-          onClick={() => setStep("course-form")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Course Details
-        </button>
-      )}
-      {step === "course-generation" && (
-        <button
-          className="btn btn-ghost btn-sm gap-1 -mb-4"
-          onClick={() => setStep("outline-edit")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Outline Editor
-        </button>
+          </div>
+        </>
       )}
 
-      {/* Step Content */}
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className={isGenerating ? "mx-auto max-w-[560px]" : "mt-6"}>
         {step === "course-form" && (
           <CourseForm
             onSubmit={handleCourseFormSubmit}
@@ -208,126 +195,12 @@ function ManualCourseCreationFlow() {
 
         {step === "course-generation" && (
           <GenerationView
-            progress={generationProgress}
             error={generationError}
-            onRetry={() => setStep("outline-edit")}
+            onRetry={() => {
+              setGenerationError(null);
+              setStep("outline-edit");
+            }}
           />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function GenerationView({
-  progress,
-  error,
-  onRetry,
-}: {
-  progress: CourseGenerationProgress | null;
-  error: string | null;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="card bg-card border border shadow-lg">
-      <div className="card-body items-center text-center py-12 space-y-8">
-        {error ? (
-          <>
-            <div className="p-4 bg-error/10 rounded-2xl">
-              <AlertTriangle className="h-10 w-10 text-error" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-error">
-                Generation Failed
-              </h2>
-              <p className="text-muted-foreground max-w-md">{error}</p>
-            </div>
-            <button className="btn btn-primary gap-2" onClick={onRetry}>
-              <RotateCcw className="h-4 w-4" />
-              Back to Edit Outline
-            </button>
-          </>
-        ) : progress ? (
-          <>
-            <div className="p-4 bg-primary/10 rounded-2xl">
-              <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">Creating Your Course</h2>
-              <p className="text-muted-foreground">{progress.message}</p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full max-w-md space-y-2">
-              <div className="flex justify-between text-sm font-medium">
-                <span>Progress</span>
-                <span>{progress.progress}%</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-primary to-secondary h-3 rounded-full transition-all duration-700 ease-out"
-                  style={{ width: `${progress.progress}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Stage Info */}
-            <div className="grid grid-cols-3 gap-4 w-full max-w-md">
-              {(
-                [
-                  {
-                    key: "creating-course",
-                    label: "Course Setup",
-                    active: progress.stage === "creating-course",
-                  },
-                  {
-                    key: "generating-slides",
-                    label: "Slides",
-                    active: progress.stage === "generating-slides",
-                  },
-                  {
-                    key: "generating-questions",
-                    label: "Questions",
-                    active: progress.stage === "generating-questions",
-                  },
-                ] as const
-              ).map((stage) => (
-                <div
-                  key={stage.key}
-                  className={`p-3 rounded-xl border transition-all ${
-                    stage.active
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border bg-base-50"
-                  }`}
-                >
-                  <div
-                    className={`text-xs font-medium ${
-                      stage.active ? "text-primary" : "text-foreground/40"
-                    }`}
-                  >
-                    {stage.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-xs text-foreground/40">
-              This may take a minute depending on course complexity.
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="p-4 bg-primary/10 rounded-2xl">
-              <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold">
-                Initializing Course Creation
-              </h2>
-              <p className="text-muted-foreground">
-                Preparing to build your course...
-              </p>
-            </div>
-          </>
         )}
       </div>
     </div>

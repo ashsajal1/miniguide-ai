@@ -25,18 +25,18 @@ export default async function AdminPage() {
   const analyticsData = await getAnalyticsData();
 
   return (
-    <div className="min-h-screen w-full bg-card">
-      <div className="container mx-auto py-12 px-4 sm:px-6 md:px-8">
+    <div className="min-h-screen w-full">
+      <div className="mx-auto max-w-[1240px] px-5 py-10 sm:px-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">
+          <h1 className="text-[clamp(1.9rem,3.4vw,2.6rem)] text-foreground">
             Admin Dashboard
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             Analytics and insights for the platform
           </p>
         </header>
 
-        <Suspense fallback={<div>Loading analytics...</div>}>
+        <Suspense fallback={<div>Loading analytics…</div>}>
           <AdminDashboard analyticsData={analyticsData} />
         </Suspense>
       </div>

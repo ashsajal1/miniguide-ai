@@ -63,7 +63,7 @@ export function SavedCoursesSection() {
   if (savedCourseIds.length === 0) return null;
 
   return (
-    <div className="card bg-card shadow-xl">
+    <div className="card bg-card">
       <div className="card-body">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
@@ -75,11 +75,11 @@ export function SavedCoursesSection() {
 
           <div className="relative w-full sm:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-foreground/50" />
+              <Search className="h-4 w-4 text-muted-foreground" />
             </div>
             <input
               type="text"
-              placeholder="Filter saved courses..."
+              placeholder="Filter saved courses…"
               className="input input-bordered input-sm w-full pl-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -107,7 +107,7 @@ export function SavedCoursesSection() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-muted/50 rounded-xl">
+          <div className="text-center py-12 bg-paper-2/50 rounded-[10px]">
             <p className="text-muted-foreground">
               No saved courses match your search.
             </p>

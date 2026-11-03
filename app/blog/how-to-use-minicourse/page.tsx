@@ -17,7 +17,7 @@ import {
 export const metadata: Metadata = {
   title: "How to Use MiniGuide AI Wisely",
   description:
-    "Practical tips to learn smarter on MiniGuide AI — build habits, use progress tracking, and get the most from every mini course.",
+    "Practical tips to learn smarter on MiniGuide AI: build habits, use progress tracking, and get the most from every mini course.",
 };
 
 const tips = [
@@ -29,7 +29,7 @@ const tips = [
   {
     icon: Gauge,
     title: "Match the course to your level",
-    body: "Every card shows its difficulty badge — Beginner (green), Intermediate (amber), Advanced (blue). If you're new to a subject, start at Beginner even if it feels slow; gaps in fundamentals are the #1 reason people stall halfway.",
+    body: "Every card shows its difficulty badge: Beginner (green), Intermediate (amber), Advanced (blue). If you're new to a subject, start at Beginner even if it feels slow; gaps in fundamentals are the #1 reason people stall halfway.",
   },
   {
     icon: Bookmark,
@@ -39,7 +39,7 @@ const tips = [
   {
     icon: CalendarCheck,
     title: "Learn small, but daily",
-    body: "Mini courses are designed for short sessions. Ten focused minutes a day beats a two-hour binge once a week — consistency is what moves your progress bar. Tie it to an existing habit, like one module with your morning coffee.",
+    body: "Mini courses are designed for short sessions. Ten focused minutes a day beats a two-hour binge once a week. Consistency is what moves your progress bar. Tie it to an existing habit, like one module with your morning coffee.",
   },
   {
     icon: Repeat,
@@ -49,12 +49,12 @@ const tips = [
   {
     icon: TrendingUp,
     title: "Check My Learning weekly",
-    body: "Your profile's My Learning section shows a live progress bar per course. Make it a weekly ritual: finish anything close to 100% first — completed courses give you momentum (and full XP) rather than a graveyard of half-done modules.",
+    body: "Your profile's My Learning section shows a live progress bar per course. Make it a weekly ritual: finish anything close to 100% first. Completed courses give you momentum (and full XP) rather than a graveyard of half-done modules.",
   },
   {
     icon: Star,
     title: "Rate what you finish",
-    body: "Leaving an honest star rating takes ten seconds and sharpens the whole catalog — good courses rise, weak ones become visible. It also forces you to reflect on what you just learned.",
+    body: "Leaving an honest star rating takes ten seconds and sharpens the whole catalog. Good courses rise, weak ones become visible. It also forces you to reflect on what you just learned.",
   },
   {
     icon: PenLine,
@@ -65,82 +65,69 @@ const tips = [
 
 export default function BlogPostPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-          <div className="absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-secondary/15 blur-3xl" />
+      <section className="relative overflow-hidden border-b border-rule">
+        <div className="window-light" aria-hidden>
+          <span />
+          <span />
         </div>
-        <div className="relative container mx-auto px-4 pt-12 pb-16">
+        <div className="relative mx-auto max-w-[1240px] px-5 sm:px-8 pt-10 pb-14 lg:pb-20">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-8"
+            className="mb-8 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             Back to blog
           </Link>
-          <div className="max-w-3xl mx-auto text-center">
-            <span className="inline-flex items-center gap-2 px-3 py-1 mb-5 text-xs font-semibold uppercase tracking-wider rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-              <Lightbulb className="h-3.5 w-3.5" />
-              Guide
-            </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-foreground mb-4 leading-[1.15]">
+          <div className="max-w-[760px]">
+            <p className="text-xs font-medium text-accent-deep">Guide</p>
+            <h1 className="mt-3 text-[clamp(2.2rem,4.4vw,3.6rem)] leading-[1.02] text-foreground">
               How to use MiniGuide AI wisely
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Eight practical habits to learn more in less time — using the
-              features you already have.
+            <p className="mt-5 max-w-[52ch] text-[16px] leading-relaxed text-ink-2">
+              Eight practical habits to learn more in less time, using the features you already have.
             </p>
-            <p className="text-xs text-muted-foreground/70 mt-4">
-              Aug 24, 2026 · 6 min read
-            </p>
+            <p className="mt-5 font-mono text-[11px] text-muted-foreground">Aug 24, 2026, 6 min read</p>
           </div>
         </div>
       </section>
 
       {/* Article */}
-      <article className="container mx-auto px-4 sm:px-6 md:px-8 py-12">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-muted-foreground leading-relaxed mb-10">
-            MiniGuide AI gives you short courses, progress tracking, and quizzes —
-            but tools only work if you use them well. Here are eight habits that
-            will help you actually finish what you start and remember what you
-            learn.
+      <article className="mx-auto max-w-[1240px] px-5 sm:px-8 py-12 lg:py-16">
+        <div className="max-w-[760px]">
+          <p className="mb-10 text-[16px] leading-relaxed text-muted-foreground">
+            MiniGuide AI gives you short courses, progress tracking, and quizzes, but tools only work if you use them well. Here are eight habits that will help you actually finish what you start and remember what you learn.
           </p>
 
-          <ol className="space-y-4">
-            {tips.map((tip) => (
-              <li key={tip.title}>
-                <div className="rounded-2xl bg-card ring-1 ring-border p-6 sm:p-7 flex gap-4 sm:gap-5">
-                  <span className="grid place-items-center h-11 w-11 shrink-0 rounded-xl bg-primary/10 text-primary">
-                    <tip.icon className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="font-bold tracking-tight text-lg mb-1.5">
-                      {tip.title}
-                    </h2>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {tip.body}
-                    </p>
-                  </div>
+          <ol className="divide-y divide-rule border-y border-rule">
+            {tips.map((tip, index) => (
+              <li key={tip.title} className="grid gap-3 py-6 sm:grid-cols-[52px_1fr] sm:gap-5">
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0">
+                  <h2 className="mb-1.5 flex items-center gap-2 text-[19px] leading-tight text-foreground">
+                    <tip.icon className="h-4 w-4 text-accent-deep" aria-hidden />
+                    {tip.title}
+                  </h2>
+                  <p className="max-w-[62ch] text-sm leading-relaxed text-muted-foreground">
+                    {tip.body}
+                  </p>
                 </div>
               </li>
             ))}
           </ol>
 
           {/* CTA */}
-          <div className="mt-12 rounded-2xl bg-card ring-1 ring-border p-8 text-center">
-            <h2 className="text-xl font-extrabold tracking-tight mb-2">
-              Put it into practice
-            </h2>
-            <p className="text-sm text-muted-foreground mb-5">
-              Pick one course, set a daily slot, and watch your progress bar
-              move.
+          <div className="mt-12 rounded-[14px] border border-rule bg-paper-2 p-7 sm:p-8">
+            <h2 className="mb-2 text-xl text-foreground">Put it into practice</h2>
+            <p className="mb-5 max-w-[44ch] text-sm text-muted-foreground">
+              Pick one course, set a daily slot, and watch your progress bar move.
             </p>
-            <Link href="/course" className="btn btn-primary gap-2 mx-auto">
-              Explore Courses
-              <ArrowRight className="h-4 w-4" />
+            <Link href="/course" className="btn btn-primary gap-2">
+              Explore courses
+              <ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
           </div>
         </div>

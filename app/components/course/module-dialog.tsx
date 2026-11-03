@@ -35,22 +35,22 @@ export default function ModuleDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 backdrop-blur-sm transition-all duration-300">
-      <div className="bg-card p-0 rounded-2xl w-full max-w-md shadow-2xl transform transition-all scale-100 border border overflow-hidden">
+    <div className="fixed inset-0 bg-shade/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-card p-0 rounded-[14px] w-full max-w-md shadow-[var(--shadow-lift)] overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-5 border-b border bg-base-50/50 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <Layers className="w-5 h-5" />
+        <div className="px-6 py-5 border-b border-rule bg-paper-2 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-[10px] bg-accent-soft flex items-center justify-center text-accent-deep">
+            <Layers className="w-5 h-5" aria-hidden />
           </div>
           <h3 className="text-lg font-bold text-foreground">{title}</h3>
         </div>
 
         <div className="p-6">
           <form onSubmit={handleSubmit}>
-            <div className="form-control w-full mb-6">
-              <label className="label px-0 pt-0">
-                <span className="label-text font-medium text-muted-foreground">
-                  Module Title
+            <div className="w-full mb-6">
+              <label className="block mb-1.5">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Module title
                 </span>
               </label>
               <input
@@ -58,12 +58,12 @@ export default function ModuleDialog({
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="e.g., Introduction to React"
-                className="input input-bordered w-full focus:input-primary focus:ring-2 focus:ring-primary/20 transition-all bg-muted/50 focus:bg-card"
+                className="input w-full transition-colors bg-muted focus:bg-card"
                 autoFocus
                 disabled={isPending}
               />
-              <label className="label px-0 pb-0">
-                <span className="label-text-alt text-foreground/50">
+              <label className="block mt-1.5">
+                <span className="text-xs text-muted-foreground">
                   Give your module a clear, descriptive name.
                 </span>
               </label>
@@ -86,7 +86,7 @@ export default function ModuleDialog({
                 {isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Saving...
+                    Saving…
                   </>
                 ) : (
                   submitLabel

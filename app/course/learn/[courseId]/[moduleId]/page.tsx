@@ -51,6 +51,11 @@ export type ContentWithRelations = Prisma.ContentGetPayload<{
         content_item: true;
       };
     };
+    written: {
+      include: {
+        submissions: true;
+      };
+    };
   };
 }>;
 
@@ -61,11 +66,19 @@ export default async function Page({
 }) {
   const { moduleId, courseId } = await params;
 
+  const { userId } = await auth();
+  const viewer = userId
+    ? await prisma.user.findUnique({
+        where: { clerk_id: userId },
+        select: { id: true },
+      })
+    : null;
+
   const moduleContent = await prisma.content.findMany({
     where: {
       module_id: moduleId,
       type: {
-        in: [ContentType.SLIDE, ContentType.QUESTION],
+        in: [ContentType.SLIDE, ContentType.QUESTION, ContentType.WRITTEN],
       },
     },
     include: {
@@ -80,18 +93,32 @@ export default async function Page({
           content_item: true,
         },
       },
+      written: {
+        include: {
+          submissions: {
+            where: { user_id: viewer?.id ?? "__none__" },
+            orderBy: { updated_at: "desc" },
+            take: 1,
+          },
+        },
+      },
     },
     orderBy: {
       order: "asc",
     },
   });
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { creator: true },
-  });
+  const [course, currentModule] = await Promise.all([
+    prisma.course.findUnique({
+      where: { id: courseId },
+      select: { creator: true, name: true },
+    }),
+    prisma.module.findUnique({
+      where: { id: moduleId },
+      select: { title: true },
+    }),
+  ]);
 
-  const { userId } = await auth();
   const isCreator = course?.creator === userId;
 
   // Fetch all modules to determine the next module
@@ -164,9 +191,14 @@ export default async function Page({
         moduleContent={moduleContent!}
         moduleId={moduleId}
         courseId={courseId}
+        courseName={course?.name ?? "Course"}
+        moduleTitle={currentModule?.title ?? "Module"}
+        moduleNumber={currentModuleIndex === -1 ? 1 : currentModuleIndex + 1}
+        moduleCount={courseModules.length}
         isCompleted={progress.isCompleted}
         nextModuleId={nextModuleId}
         isCreator={isCreator}
+        isSignedIn={Boolean(userId)}
       />
     </div>
   );

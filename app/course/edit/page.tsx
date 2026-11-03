@@ -41,7 +41,7 @@ export default function CourseList() {
       <div className="min-h-screen flex items-center justify-center bg-card">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <span className="text-lg">Loading courses...</span>
+          <span className="text-lg">Loading courses…</span>
         </div>
       </div>
     );
@@ -75,7 +75,7 @@ export default function CourseList() {
           {courses.map((course) => (
             <div
               key={course.id}
-              className="card bg-muted shadow-xl hover:shadow-2xl transition-shadow duration-300"
+              className="rounded-[14px] border border-rule bg-paper shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-lift)] transition-shadow duration-300"
             >
               {course.thumbnail_url && (
                 <figure className="h-48 bg-muted">
@@ -115,11 +115,11 @@ export default function CourseList() {
           ))}
 
           {/* Add New Course Card */}
-          <div className="card bg-muted shadow-xl border-2 border-dashed border-base-content/20 hover:border-primary/50 transition-colors">
+          <div className="rounded-[14px] border border-rule bg-paper shadow-[var(--shadow-card)] border-2 border-dashed border-base-content/20 hover:border-primary/50 transition-colors">
             <div className="card-body items-center justify-center">
               <div className="text-center">
                 <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-8 h-8 text-foreground/50" />
+                  <Plus className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">Create New Course</h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -140,7 +140,7 @@ export default function CourseList() {
           <div className="text-center py-16">
             <div className="max-w-md mx-auto">
               <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mx-auto mb-6">
-                <Plus className="w-12 h-12 text-foreground/30" />
+                <Plus className="w-12 h-12 text-muted-foreground" />
               </div>
               <h2 className="text-2xl font-bold mb-2">No courses yet</h2>
               <p className="text-muted-foreground mb-6">

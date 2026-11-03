@@ -155,7 +155,7 @@ export default function SlideForm({
           </div>
           <label className="label">
             <span className="label-text-alt text-info">
-              💡 Tip: Use the preview pane to see how your content will look
+              Tip: use the preview pane to see how your content will look
             </span>
           </label>
         </div>
@@ -176,7 +176,7 @@ export default function SlideForm({
               <div key={index} className="flex gap-2">
                 <div className="relative flex-1">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <LinkIcon className="h-4 w-4 text-foreground/40" />
+                    <LinkIcon className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <input
                     type="text"
@@ -231,7 +231,7 @@ export default function SlideForm({
             {isSubmitting ? (
               <>
                 <span className="loading loading-spinner loading-sm"></span>
-                Saving...
+                Saving…
               </>
             ) : (
               submitButtonText
@@ -261,7 +261,7 @@ export default function SlideForm({
                   <h4 className="font-semibold mb-2">Reference Changes:</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <div className="text-xs font-bold uppercase text-foreground/50 mb-1">
+                      <div className="text-xs font-bold  text-muted-foreground mb-1">
                         Previous References
                       </div>
                       {initialReferences.length > 0 ? (
@@ -273,13 +273,13 @@ export default function SlideForm({
                           ))}
                         </ul>
                       ) : (
-                        <div className="text-sm text-foreground/50 italic">
+                        <div className="text-sm text-muted-foreground italic">
                           None
                         </div>
                       )}
                     </div>
                     <div>
-                      <div className="text-xs font-bold uppercase text-foreground/50 mb-1">
+                      <div className="text-xs font-bold  text-muted-foreground mb-1">
                         New References
                       </div>
                       {references.length > 0 ? (
@@ -291,7 +291,7 @@ export default function SlideForm({
                           ))}
                         </ul>
                       ) : (
-                        <div className="text-sm text-foreground/50 italic">
+                        <div className="text-sm text-muted-foreground italic">
                           None
                         </div>
                       )}

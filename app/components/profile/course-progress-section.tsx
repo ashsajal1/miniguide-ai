@@ -23,20 +23,20 @@ export function CourseProgressSection({ courses }: CourseProgressProps) {
   return (
     <section className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-2xl font-bold tracking-tight">My Learning</h2>
+        <h2 className="text-xl text-foreground">My Learning</h2>
         {courses.length > 0 && (
           <span className="text-sm text-muted-foreground">
             {courses.length}{" "}
             {courses.length === 1 ? "course" : "courses"}
             {completedCount > 0 &&
-              ` · ${completedCount} ${completedCount === 1 ? "completed" : "completed"}`}
+              `, ${completedCount} ${completedCount === 1 ? "completed" : "completed"}`}
           </span>
         )}
       </div>
 
       {courses.length === 0 ? (
-        <div className="rounded-2xl bg-card ring-1 ring-border p-10 text-center">
-          <div className="grid place-items-center h-12 w-12 mx-auto mb-3 rounded-xl bg-primary/10 text-primary">
+        <div className="rounded-[14px] border border-rule bg-card p-10 text-center">
+          <div className="grid place-items-center h-12 w-12 mx-auto mb-3 rounded-[10px] bg-accent-soft text-accent-deep">
             <BookOpen className="h-6 w-6" />
           </div>
           <p className="text-muted-foreground mb-4">
@@ -61,14 +61,14 @@ export function CourseProgressSection({ courses }: CourseProgressProps) {
               <li key={course.id}>
                 <Link
                   href={`/course/${course.id}`}
-                  className="group rounded-2xl bg-card ring-1 ring-border p-4 flex flex-col sm:flex-row sm:items-center gap-4 hover:shadow-lg hover:shadow-primary/5 transition-shadow"
+                  className="group rounded-[14px] border border-rule bg-card p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-shadow hover:shadow-[var(--shadow-card)]"
                 >
-                  <div className="relative w-full sm:w-32 h-40 sm:h-20 shrink-0 rounded-xl overflow-hidden bg-muted">
+                  <div className="relative w-full sm:w-32 h-40 sm:h-20 shrink-0 rounded-[10px] overflow-hidden bg-paper-2">
                     <Image
                       src={course.thumbnail_url || "/placeholder-course.svg"}
                       alt={course.name}
                       fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="object-cover transition-transform duration-500 "
                       sizes="128px"
                     />
                   </div>
@@ -80,7 +80,7 @@ export function CourseProgressSection({ courses }: CourseProgressProps) {
                       </h3>
                       <span
                         className={`text-sm font-bold shrink-0 ${
-                          isCompleted ? "text-success" : "text-primary"
+                          isCompleted ? "text-accent-deep" : "text-primary"
                         }`}
                       >
                         {percentage}%
@@ -88,16 +88,16 @@ export function CourseProgressSection({ courses }: CourseProgressProps) {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="flex-1 h-1.5 rounded-full bg-paper-2 overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            isCompleted ? "bg-success" : "bg-primary"
+                          className={`h-full origin-left rounded-full transition-transform duration-500 ${
+                            isCompleted ? "bg-accent" : "bg-primary"
                           }`}
-                          style={{ width: `${percentage}%` }}
+                          style={{ transform: `scaleX(${percentage / 100})` }}
                         />
                       </div>
                       {isCompleted ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-success shrink-0">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-deep shrink-0">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           Completed
                         </span>
@@ -109,7 +109,7 @@ export function CourseProgressSection({ courses }: CourseProgressProps) {
                     </div>
                   </div>
 
-                  <span className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-primary shrink-0 transition-all duration-300 group-hover:gap-2">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-primary shrink-0 transition-colors duration-300">
                     {isCompleted ? "Review" : "Continue"}
                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </span>

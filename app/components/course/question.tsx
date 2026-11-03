@@ -1,10 +1,10 @@
-// app/course/learn/[courseId]/[moduleId]/question.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Prisma } from "@/generated/prisma";
-import { Edit } from "lucide-react";
+import { Check, Edit, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
+import InlineMarkdown from "./inline-markdown";
 
 type QuestionWithOptions = Prisma.QuestionGetPayload<{
   include: {
@@ -28,247 +28,252 @@ export default function Question({
 }: QuestionProps) {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const feedbackRef = useRef<HTMLDivElement>(null);
+  const firstOptionRef = useRef<HTMLInputElement>(null);
+  const pendingOptionFocus = useRef(false);
 
-  if (!question) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="card bg-card shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title text-2xl">Question not found</h2>
-            <p>Sorry, we couldn&apos;t find the requested question.</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const promptId = `question-${question.id}-prompt`;
+  const helpId = `question-${question.id}-help`;
+
+  useEffect(() => {
+    if (isSubmitted) {
+      feedbackRef.current?.focus();
+    } else if (pendingOptionFocus.current) {
+      pendingOptionFocus.current = false;
+      firstOptionRef.current?.focus();
+    }
+  }, [isSubmitted]);
 
   const handleOptionChange = (optionId: string) => {
-    // For multiple choice questions, we'll allow selecting only one option
-    // and toggle the selection if the same option is clicked again
-    setSelectedOptions(
-      (prev) =>
-        prev.includes(optionId)
-          ? [] // Deselect if clicking the same option
-          : [optionId] // Select the new option
-    );
+    setSelectedOptions([optionId]);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitted || selectedOptions.length === 0) return;
     setIsSubmitted(true);
-    console.log("Selected options:", selectedOptions);
-    if (onComplete) {
-      onComplete();
-    }
+    onComplete?.();
   };
 
-  const isAnswerCorrect = (): boolean | null => {
-    if (!isSubmitted) return null;
-    const correctAnswers = question.options
-      .filter((opt) => opt.isCorrect)
-      .map((opt) => opt.id);
-    return (
-      selectedOptions.length === correctAnswers.length &&
-      selectedOptions.every((opt) => correctAnswers.includes(opt))
-    );
+  const handleRetry = () => {
+    pendingOptionFocus.current = true;
+    setSelectedOptions([]);
+    setIsSubmitted(false);
   };
 
-  const isCorrect = isAnswerCorrect();
-  const showFeedback = isSubmitted && isCorrect !== null;
+  const correctAnswers = question.options
+    .filter((option) => option.isCorrect)
+    .map((option) => option.id);
+
+  const isCorrect =
+    isSubmitted &&
+    selectedOptions.length === correctAnswers.length &&
+    selectedOptions.every((option) => correctAnswers.includes(option));
+
+  const explanation =
+    question.options.find(
+      (option) => option.isCorrect && option.explanation?.trim()
+    )?.explanation?.trim() ??
+    question.options.find((option) => option.explanation?.trim())?.explanation
+      ?.trim() ??
+    null;
+
+  const selectedOption = question.options.find((option) =>
+    selectedOptions.includes(option.id)
+  );
+  const correctOption = question.options.find((option) => option.isCorrect);
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <div className="card bg-card shadow-xl border border">
-        <div className="card-body">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-            <div className="flex-1">
-              <div className="flex justify-between items-start gap-3">
-                <h2 className="card-title text-2xl">
-                  {question?.content || "Untitled Question"}
-                </h2>
-                <div className="flex items-center gap-2">
-                  <span className="badge badge-primary">MCQ</span>
-                  {isCreator && courseId && question && (
-                    <Link
-                      href={`/course/edit/${courseId}/question/${question.id}`}
-                      className="btn btn-ghost btn-circle btn-sm"
-                      title="Edit Question"
-                    >
-                      <Edit size={16} />
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+    <section aria-labelledby={promptId}>
+      <div className="flex items-start justify-between gap-4">
+        <h2
+          id={promptId}
+          className="min-w-0 font-display text-[clamp(1rem,1.2vw,1.125rem)] leading-[1.3] text-ink"
+        >
+          <InlineMarkdown>
+            {question.content || "Untitled question"}
+          </InlineMarkdown>
+        </h2>
+        {isCreator && courseId && (
+          <Link
+            href={`/course/edit/${courseId}/question/${question.id}`}
+            className="btn btn-ghost btn-sm h-8 shrink-0 gap-1.5 px-2 text-muted-foreground"
+          >
+            <Edit size={14} aria-hidden />
+            Edit question
+          </Link>
+        )}
+      </div>
 
-          <div className="space-y-5">
-            <div className="space-y-4">
+      <p
+        id={helpId}
+        className="question-help mt-1.5 text-xs text-muted-foreground"
+      >
+        Select one answer.
+      </p>
+
+      {!isSubmitted ? (
+        <form className="mt-3" onSubmit={handleSubmit}>
+          <fieldset aria-describedby={helpId}>
+            <legend className="sr-only">Answer choices</legend>
+
+            <div className="question-options grid gap-2 sm:grid-cols-2">
               {question.options.map((option, index) => {
                 const isSelected = selectedOptions.includes(option.id);
-                const isCorrectOption = option.isCorrect;
-                const showResult =
-                  isSubmitted && (isSelected || isCorrectOption);
 
-                let optionStyle = "border hover:border-primary";
+                const optionStyle = isSelected
+                  ? "border-accent bg-accent-soft/40"
+                  : "border-rule bg-card hover:border-accent/50 hover:bg-paper-2";
 
-                if (showResult) {
-                  if (isCorrectOption) {
-                    optionStyle = "border-success bg-success/10";
-                  } else if (isSelected && !isCorrect) {
-                    optionStyle = "border-error bg-error/10";
-                  }
-                } else if (isSelected) {
-                  optionStyle = "border-primary bg-primary/10";
-                }
+                const markStyle = isSelected
+                  ? "border-accent bg-accent text-accent-ink"
+                  : "border-muted-foreground/40 bg-paper";
 
                 return (
-                  <div
+                  <label
                     key={option.id}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${optionStyle} ${
-                      !isSubmitted
-                        ? "hover:shadow-md hover:border-primary/50"
-                        : ""
-                    }`}
-                    onClick={() =>
-                      !isSubmitted && handleOptionChange(option.id)
-                    }
+                    className={`question-option flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3 py-2.5 transition-[background-color,border-color] duration-200 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${optionStyle}`}
                   >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`flex-shrink-0 mt-0.5 flex items-center justify-center w-6 h-6 rounded-full border-2 ${
-                          isSelected
-                            ? isCorrect && showResult
-                              ? "border-success bg-success text-white"
-                              : isSubmitted
-                              ? "border-error bg-error text-white"
-                              : "border-primary bg-primary text-white"
-                            : showResult && isCorrectOption
-                            ? "border-success bg-success text-white"
-                            : "border-base-content/30"
-                        }`}
-                      >
-                        {isSelected && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="flex-1">{option.text}</span>
-                      {showResult && isCorrectOption && (
-                        <div className="badge badge-success gap-1 ml-2">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Correct
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    <input
+                      ref={index === 0 ? firstOptionRef : undefined}
+                      type="radio"
+                      name={`question-${question.id}`}
+                      value={option.id}
+                      checked={isSelected}
+                      onChange={() => handleOptionChange(option.id)}
+                      className="peer sr-only"
+                    />
+
+                    <span
+                      aria-hidden
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${markStyle}`}
+                    >
+                      {isSelected ? (
+                        <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                      ) : null}
+                    </span>
+
+                    <span
+                      className={`min-w-0 flex-1 text-sm leading-snug ${
+                        isSelected ? "text-ink" : "text-ink-2"
+                      }`}
+                    >
+                      <InlineMarkdown>{option.text}</InlineMarkdown>
+                    </span>
+                  </label>
                 );
               })}
             </div>
+          </fieldset>
 
-            {showFeedback && (
-              <div
-                className={`mt-6 p-5 rounded-xl ${
+          <div className="mt-3">
+            <button
+              type="submit"
+              className="btn btn-primary w-full sm:w-auto"
+              disabled={selectedOptions.length === 0}
+            >
+              Submit answer
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div
+          ref={feedbackRef}
+          tabIndex={-1}
+          role="status"
+          style={{ outline: "none" }}
+          className={`mt-3 rounded-[10px] border p-3.5 ${
+            isCorrect
+              ? "border-accent bg-accent-soft/40"
+              : "border-rule bg-paper-2"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span
+                aria-hidden
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                   isCorrect
-                    ? "bg-success/10 border border-success"
-                    : "bg-error/10 border border-error"
+                    ? "bg-accent text-accent-ink"
+                    : "bg-error text-error-content"
                 }`}
               >
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <div
-                    className={`flex-shrink-0 mt-0.5 flex items-center justify-center w-10 h-10 rounded-full ${
-                      isCorrect ? "bg-success" : "bg-error"
-                    }`}
-                  >
-                    {isCorrect ? (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-white"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-white"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <h3
-                      className={`text-lg font-semibold ${
-                        isCorrect ? "text-success" : "text-error"
-                      }`}
-                    >
-                      {isCorrect
-                        ? "Correct! Well done!"
-                        : "Incorrect. Please try again."}
-                    </h3>
-                    {question.options[0].explanation && (
-                      <div className="mt-3 text-foreground/90">
-                        <p className="font-medium text-muted-foreground mb-1">
-                          Explanation:
-                        </p>
-                        <p>{question.options[0].explanation}</p>
-                      </div>
-                    )}
-                  </div>
+                {isCorrect ? (
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                ) : (
+                  <X className="h-3 w-3" strokeWidth={3} />
+                )}
+              </span>
+              <p
+                className={`font-display text-base leading-tight ${
+                  isCorrect ? "text-accent-deep" : "text-ink"
+                }`}
+              >
+                {isCorrect ? "Correct." : "Not quite."}
+              </p>
+            </div>
+            {!isCorrect && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm h-8 shrink-0 gap-1.5"
+                onClick={handleRetry}
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+                Try again
+              </button>
+            )}
+          </div>
+
+          <div className="mt-2.5 grid gap-2 sm:grid-cols-2">
+            {!isCorrect && selectedOption && (
+              <div className="flex items-start gap-2 rounded-[8px] border border-error/40 bg-error/5 px-2.5 py-2">
+                <span
+                  aria-hidden
+                  className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-error text-error-content"
+                >
+                  <X className="h-2 w-2" strokeWidth={3} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="dose text-[10px] text-error">Your answer</p>
+                  <p className="mt-0.5 text-[0.8125rem] leading-snug text-ink-2">
+                    <InlineMarkdown>{selectedOption.text}</InlineMarkdown>
+                  </p>
                 </div>
               </div>
             )}
 
-            <div className="pt-4">
-              <button
-                disabled={isSubmitted || selectedOptions.length === 0}
-                onClick={handleSubmit}
-                className={`btn w-full sm:w-auto ${
-                  isSubmitted
-                    ? "btn-disabled"
-                    : selectedOptions.length === 0
-                    ? "btn-outline"
-                    : "btn-primary"
-                }`}
-              >
-                {isSubmitted ? "Answer Submitted" : "Submit Answer"}
-              </button>
-            </div>
+            {correctOption && (
+              <div className="flex items-start gap-2 rounded-[8px] border border-accent/50 bg-accent-soft/40 px-2.5 py-2">
+                <span
+                  aria-hidden
+                  className="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink"
+                >
+                  <Check className="h-2 w-2" strokeWidth={3} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="dose text-[10px] text-accent-deep">
+                    Correct answer
+                  </p>
+                  <p className="mt-0.5 text-[0.8125rem] leading-snug text-ink-2">
+                    <InlineMarkdown>{correctOption.text}</InlineMarkdown>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
+
+          {explanation && (
+            <div className="mt-2.5 border-t border-rule pt-2.5">
+              <p className="dose text-[10px] text-muted-foreground">
+                Explanation
+              </p>
+              <p className="mt-1 text-[0.8125rem] leading-relaxed text-ink-2">
+                <InlineMarkdown>{explanation}</InlineMarkdown>
+              </p>
+            </div>
+          )}
         </div>
-      </div>
-    </div>
+      )}
+    </section>
   );
 }

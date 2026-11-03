@@ -54,6 +54,18 @@ async function verifyQuestionOwner(questionId: string) {
   return question?.module.course.creator === userId;
 }
 
+async function verifyWrittenOwner(writtenId: string) {
+  const { userId } = await auth();
+  if (!userId) return false;
+
+  const written = await prisma.written.findUnique({
+    where: { id: writtenId },
+    select: { module: { select: { course: { select: { creator: true } } } } },
+  });
+
+  return written?.module.course.creator === userId;
+}
+
 // Module Actions
 export async function createModule(courseId: string, title: string) {
   try {
@@ -386,6 +398,118 @@ export async function deleteQuestion(questionId: string) {
   } catch (error) {
     console.error("Failed to delete question:", error);
     return { success: false, error: "Failed to delete question" };
+  }
+}
+
+// Written Actions
+export async function createWritten(
+  moduleId: string,
+  title: string,
+  prompt: string,
+  guidance?: string
+) {
+  try {
+    const isOwner = await verifyModuleOwner(moduleId);
+    if (!isOwner) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const order = await getNextOrder(moduleId);
+    const { written, contentItem } = await prisma.$transaction(async (tx) => {
+      const contentItem = await tx.content.create({
+        data: {
+          type: ContentType.WRITTEN,
+          module_id: moduleId,
+          order,
+        },
+      });
+      const written = await tx.written.create({
+        data: {
+          title,
+          prompt,
+          guidance: guidance?.trim() || null,
+          module_id: moduleId,
+          content_item_id: contentItem.id,
+        },
+      });
+      return { written, contentItem };
+    });
+
+    revalidatePath(`/course/edit/module/${moduleId}`);
+    return {
+      success: true,
+      written: {
+        ...written,
+        content_item: contentItem,
+      },
+    };
+  } catch (error) {
+    console.error("Error creating written task:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to create written task",
+    };
+  }
+}
+
+export async function updateWritten(
+  writtenId: string,
+  title: string,
+  prompt: string,
+  guidance?: string
+) {
+  try {
+    const isOwner = await verifyWrittenOwner(writtenId);
+    if (!isOwner) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const written = await prisma.written.update({
+      where: { id: writtenId },
+      data: {
+        title,
+        prompt,
+        guidance: guidance?.trim() || null,
+      },
+      include: { module: true },
+    });
+
+    revalidatePath(`/course/edit/module/${written.module_id}`);
+    return { success: true, written };
+  } catch (error) {
+    console.error("Failed to update written task:", error);
+    return { success: false, error: "Failed to update written task" };
+  }
+}
+
+export async function deleteWritten(writtenId: string) {
+  try {
+    const isOwner = await verifyWrittenOwner(writtenId);
+    if (!isOwner) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const written = await prisma.written.findUnique({
+      where: { id: writtenId },
+      select: { module_id: true, content_item_id: true },
+    });
+
+    if (!written) {
+      return { success: false, error: "Written task not found" };
+    }
+
+    // Submissions cascade with the written row; the content item must go too.
+    await prisma.$transaction([
+      prisma.written.delete({ where: { id: writtenId } }),
+      prisma.content.delete({ where: { id: written.content_item_id } }),
+    ]);
+
+    revalidatePath(`/course/edit/module/${written.module_id}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete written task:", error);
+    return { success: false, error: "Failed to delete written task" };
   }
 }
 

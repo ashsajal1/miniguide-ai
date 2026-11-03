@@ -34,7 +34,7 @@ export default function SaveCourseButton({
     <button
       onClick={toggleSave}
       className={`btn btn-ghost btn-sm ${fullWidth ? "w-full justify-center gap-2" : "btn-square"} ${className} ${
-        saved ? "text-primary" : "text-foreground/50 hover:text-primary"
+        saved ? "text-primary" : "text-muted-foreground hover:text-primary"
       }`}
       title={saved ? "Unsave course" : "Save course"}
     >

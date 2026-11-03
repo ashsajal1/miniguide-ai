@@ -1,129 +1,616 @@
+/* Hallmark · v2.0.0 · genre: modern-minimal · theme: Dose (by request) · shape: Workbench · job: try
+ * hero: Organiser · nav: paper bar, wordmark and one create action · footer: brand mast over three link columns · imagery: course photographs in daylight, the organiser built in the hero · signature: the organiser with a stamped pharmacy label · dose: white
+ * axes: light/schibsted-instrument/dm-mono · posture: committed · contrast: pass · fold: pass
+ * critique: warm paper and green-black ink hold a learning tray, not a clinical portal; the light is daylight
+ * hero-review: in-thread · the hero was built inside the full redesign and reviewed from the captures
+ * finish-review: subagent · 8 findings · 8 resolved · gap: none
+ * built: Hallmark · redesign: full · scope: site + app */
+/* Hallmark · answered F24 · the dose label is paper on plastic; its hairline edge and lift describe a label object rather than a card */
+/* Hallmark · answered F4 · legacy markup reaches one filled primary per screen; the shim carries the recipes and each page picks one */
+/* Hallmark · waive 49b · user-authored course titles are clamped to two lines inside the card · the title link is clamped to two lines and a one-line ellipsis on phones keeps every card even */
+/* Hallmark · dismissed 49 · the three flagged buttons already carry .nowrap, which sets white-space: nowrap; the linter joins both conditional label branches into one string */
+/* Hallmark · night · deep plastic tints, a dim green lamp instead of the daylight wash, and the label stays paper */
 @import "tailwindcss";
 
 @theme {
-  /* Core palette — deep blue & emerald learning theme */
-  --color-background: hsl(248 60% 99%);
-  --color-foreground: hsl(245 40% 15%);
-  --color-card: hsl(0 0% 100%);
-  --color-primary: #1d4ed8;                 /* Deep Blue */
-  --color-primary-foreground: hsl(210 100% 98%);
-  --color-secondary: #10b981;               /* Emerald */
-  --color-secondary-foreground: hsl(160 100% 98%);
-  --color-accent: hsl(173 85% 28%);
-  --color-accent-foreground: hsl(180 100% 97%);
-  --color-muted: hsl(248 40% 96%);
-  --color-muted-foreground: hsl(243 15% 45%);
-  --color-success: hsl(152 70% 36%);
-  --color-warning: hsl(38 95% 44%);
-  --color-info: hsl(203 90% 46%);
-  --color-border: hsl(243 25% 90%);
-  --radius: 0.5rem;
+  /* Dose — warm morning paper, green-black ink, one pharmacy green */
+  --color-background: oklch(97.6% 0.011 88);
+  --color-foreground: oklch(21% 0.025 170);
+  --color-card: oklch(98.9% 0.009 88);
+  --color-primary: oklch(50% 0.13 160);
+  --color-primary-foreground: oklch(99% 0.006 160);
+  --color-secondary: oklch(88% 0.08 160);
+  --color-secondary-foreground: oklch(21% 0.025 170);
+  --color-accent: oklch(42% 0.11 162);
+  --color-accent-foreground: oklch(99% 0.006 160);
+  --color-muted: oklch(96.5% 0.02 160);
+  --color-muted-foreground: oklch(49% 0.024 165);
+  --color-success: oklch(45% 0.12 160);
+  --color-warning: oklch(42% 0.05 80);
+  --color-error: oklch(47% 0.16 27);
+  --color-info: oklch(45% 0.05 210);
+  --color-border: oklch(86.5% 0.022 140);
+  --color-primary-content: oklch(99% 0.006 160);
+  --color-secondary-content: oklch(21% 0.025 170);
+  --color-accent-content: oklch(99% 0.006 160);
+  --color-success-content: oklch(99% 0.006 160);
+  --color-info-content: oklch(99% 0.006 160);
+  --color-warning-content: oklch(21% 0.025 170);
+  --color-error-content: oklch(99% 0.006 160);
+  --radius: 0.625rem;
+
+  /* Dose roles */
+  --color-paper: oklch(97.6% 0.011 88);
+  --color-paper-2: oklch(96.5% 0.02 160);
+  --color-paper-3: oklch(93% 0.036 160);
+  --color-ink: oklch(21% 0.025 170);
+  --color-ink-2: oklch(31% 0.02 170);
+  --color-rule: oklch(86.5% 0.022 140);
+  --color-accent-deep: oklch(42% 0.11 162);
+  --color-accent-soft: oklch(88% 0.08 160);
+  --color-accent-ink: oklch(99% 0.006 160);
+  --color-focus: oklch(45% 0.14 160);
+  --color-shade: oklch(21% 0.025 170);
+  --color-mon: oklch(85% 0.052 22);
+  --color-tue: oklch(87.5% 0.058 64);
+  --color-wed: oklch(91.5% 0.064 98);
+  --color-thu: oklch(86.5% 0.075 160);
+  --color-fri: oklch(87% 0.048 210);
+  --color-sat: oklch(84% 0.045 270);
+  --color-sun: oklch(84% 0.048 322);
+  --color-light: oklch(99.4% 0.016 84);
+  --color-glint: oklch(100% 0 0);
+
+  /* Label paper: the prescription slip stays paper in both modes */
+  --color-label-card: oklch(96.8% 0.014 88);
+  --color-label-paper-2: oklch(93.5% 0.026 150);
+  --color-label-paper-3: oklch(89% 0.04 150);
+  --color-label-foreground: oklch(21% 0.025 170);
+  --color-label-ink: oklch(21% 0.025 170);
+  --color-label-ink-2: oklch(31% 0.02 170);
+  --color-label-muted: oklch(96.5% 0.02 160);
+  --color-label-muted-foreground: oklch(49% 0.024 165);
+  --color-label-rule: oklch(86.5% 0.022 140);
+  --color-label-primary: oklch(50% 0.13 160);
+  --color-label-primary-foreground: oklch(99% 0.006 160);
+  --color-label-secondary: oklch(88% 0.08 160);
+  --color-label-secondary-foreground: oklch(21% 0.025 170);
+  --color-label-accent: oklch(42% 0.11 162);
+  --color-label-accent-soft: oklch(88% 0.08 160);
+  --color-label-accent-ink: oklch(99% 0.006 160);
+  --color-label-focus: oklch(45% 0.14 160);
+
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: var(--font-dm-mono), ui-monospace, monospace;
+  --font-mono: var(--font-dm-mono), ui-monospace, monospace;
+
+  --radius-card: 14px;
+  --radius-input: 10px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px oklch(30% 0.03 165 / 0.08), 0 24px 48px -24px oklch(40% 0.08 165 / 0.35);
+  --shadow-lift: 0 1px 1px oklch(30% 0.03 165 / 0.1), 8px 18px 28px -14px oklch(36% 0.06 165 / 0.32), 18px 40px 60px -30px oklch(40% 0.08 165 / 0.3);
+
+  /* Dose night ground */
+  --color-night-background: oklch(13% 0.01 170);
+  --color-night-foreground: oklch(96% 0.01 160);
+  --color-night-card: oklch(18% 0.014 170);
+  --color-night-primary: oklch(72% 0.12 160);
+  --color-night-primary-foreground: oklch(15% 0.02 170);
+  --color-night-secondary: oklch(80% 0.09 160);
+  --color-night-secondary-foreground: oklch(15% 0.02 170);
+  --color-night-accent: oklch(78% 0.1 160);
+  --color-night-accent-foreground: oklch(15% 0.02 170);
+  --color-night-muted: oklch(21% 0.02 168);
+  --color-night-muted-foreground: oklch(72% 0.02 160);
+  --color-night-success: oklch(78% 0.1 160);
+  --color-night-warning: oklch(80% 0.03 80);
+  --color-night-error: oklch(76% 0.12 25);
+  --color-night-info: oklch(80% 0.04 210);
+  --color-night-border: oklch(28% 0.02 165);
+  --color-night-paper: oklch(13% 0.01 170);
+  --color-night-paper-2: oklch(19.5% 0.016 168);
+  --color-night-paper-3: oklch(24% 0.026 165);
+  --color-night-ink: oklch(96% 0.01 160);
+  --color-night-ink-2: oklch(84% 0.015 160);
+  --color-night-rule: oklch(30% 0.02 165);
+  --color-night-accent-deep: oklch(66% 0.11 160);
+  --color-night-accent-soft: oklch(30% 0.06 160);
+  --color-night-accent-ink: oklch(15% 0.02 170);
+  --color-night-focus: oklch(80% 0.12 160);
+  --color-night-light: oklch(60% 0.1 160);
+  --color-night-glint: oklch(90% 0.01 160);
+  --color-night-shade: oklch(6% 0.008 170);
+  --color-night-band: oklch(9.5% 0.012 170);
+  --color-night-mon: oklch(37% 0.085 22);
+  --color-night-tue: oklch(39% 0.075 64);
+  --color-night-wed: oklch(42% 0.075 98);
+  --color-night-thu: oklch(36% 0.08 160);
+  --color-night-fri: oklch(38% 0.07 210);
+  --color-night-sat: oklch(38% 0.07 270);
+  --color-night-sun: oklch(38% 0.07 322);
+  --shadow-card-night: 0 1px 2px oklch(0% 0 0 / 0.5), 0 24px 48px -24px oklch(0% 0 0 / 0.55);
+  --shadow-lift-night: 0 1px 1px oklch(0% 0 0 / 0.55), 8px 18px 28px -14px oklch(0% 0 0 / 0.5), 18px 40px 60px -30px oklch(0% 0 0 / 0.45);
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 .dark {
-  --color-background: hsl(245 35% 8%);
-  --color-foreground: hsl(250 40% 94%);
-  --color-card: hsl(245 28% 11%);
-  --color-primary: hsl(217 91% 58%);
-  --color-primary-foreground: hsl(218 100% 97%);
-  --color-secondary: hsl(161 79% 45%);
-  --color-secondary-foreground: hsl(162 70% 10%);
-  --color-accent: hsl(172 66% 52%);
-  --color-accent-foreground: hsl(176 65% 10%);
-  --color-muted: hsl(246 20% 16%);
-  --color-muted-foreground: hsl(243 15% 68%);
-  --color-success: hsl(152 60% 46%);
-  --color-warning: hsl(40 95% 55%);
-  --color-info: hsl(202 85% 58%);
-  --color-border: hsl(245 18% 22%);
+  --color-background: var(--color-night-background);
+  --color-foreground: var(--color-night-foreground);
+  --color-card: var(--color-night-card);
+  --color-primary: var(--color-night-primary);
+  --color-primary-foreground: var(--color-night-primary-foreground);
+  --color-secondary: var(--color-night-secondary);
+  --color-secondary-foreground: var(--color-night-secondary-foreground);
+  --color-accent: var(--color-night-accent);
+  --color-accent-foreground: var(--color-night-accent-foreground);
+  --color-muted: var(--color-night-muted);
+  --color-muted-foreground: var(--color-night-muted-foreground);
+  --color-success: var(--color-night-success);
+  --color-warning: var(--color-night-warning);
+  --color-error: var(--color-night-error);
+  --color-info: var(--color-night-info);
+  --color-border: var(--color-night-border);
+  --color-paper: var(--color-night-paper);
+  --color-paper-2: var(--color-night-paper-2);
+  --color-paper-3: var(--color-night-paper-3);
+  --color-ink: var(--color-night-ink);
+  --color-ink-2: var(--color-night-ink-2);
+  --color-rule: var(--color-night-rule);
+  --color-accent-deep: var(--color-night-accent-deep);
+  --color-accent-soft: var(--color-night-accent-soft);
+  --color-accent-ink: var(--color-night-accent-ink);
+  --color-focus: var(--color-night-focus);
+  --color-light: var(--color-night-light);
+  --color-glint: var(--color-night-glint);
+  --color-shade: var(--color-night-shade);
+  --color-mon: var(--color-night-mon);
+  --color-tue: var(--color-night-tue);
+  --color-wed: var(--color-night-wed);
+  --color-thu: var(--color-night-thu);
+  --color-fri: var(--color-night-fri);
+  --color-sat: var(--color-night-sat);
+  --color-sun: var(--color-night-sun);
+  --shadow-card: var(--shadow-card-night);
+  --shadow-lift: var(--shadow-lift-night);
 }
 
-* {
-  border-color: var(--color-border);
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
 }
 
 html {
+  overflow-x: clip;
   scroll-behavior: smooth;
+  scrollbar-color: var(--color-rule) transparent;
 }
 
 body {
+  overflow-x: clip;
   background-color: var(--color-background);
   color: var(--color-foreground);
+  font-family: var(--font-body, var(--font-sans));
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  caret-color: var(--color-accent-deep);
 }
 
-/* Compatibility shim for daisyUI class names -> Tailwind + CSS variables */
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  color: inherit;
+  overflow-wrap: break-word;
+  min-width: 0;
+  text-wrap: balance;
+}
+
+p, li {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  transition-duration: 0s;
+}
+.input[aria-invalid="true"]:focus-visible,
+.select[aria-invalid="true"]:focus-visible,
+.textarea[aria-invalid="true"]:focus-visible {
+  outline-color: var(--color-error);
+}
+
+/* Dosage numerals and pharmacy labels */
+.dose, .label-mono {
+  font-family: var(--font-outlier, var(--font-mono));
+  font-variant-numeric: tabular-nums;
+}
+
+/* Paper grain: warm morning paper with a fine fibre */
+.paper-grain {
+  background-color: var(--color-paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* Window light: four soft panes drifting across the paper */
+.window-light {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+.window-light span {
+  position: absolute;
+  width: 42%;
+  height: 130%;
+  top: -15%;
+  background: var(--color-light);
+  opacity: 0.55;
+  filter: blur(44px);
+  transform: skewX(-12deg);
+  animation: light-drift 90s ease-in-out infinite alternate;
+}
+.window-light span:nth-child(1) { left: -6%; animation-delay: 0s; }
+.window-light span:nth-child(2) { left: 22%; opacity: 0.34; animation-delay: -22s; }
+.window-light span:nth-child(3) { left: 52%; opacity: 0.42; animation-delay: -44s; }
+.window-light span:nth-child(4) { left: 80%; opacity: 0.3; animation-delay: -66s; }
+
+/* Night keeps the light, not the haze: a dim green lamp instead of daylight */
+.dark .window-light span { opacity: 0.1; filter: blur(56px); }
+.dark .window-light span:nth-child(2) { opacity: 0.06; }
+.dark .window-light span:nth-child(3) { opacity: 0.08; }
+.dark .window-light span:nth-child(4) { opacity: 0.05; }
+
+@keyframes light-drift {
+  from { transform: skewX(-12deg) translateX(-2%); }
+  to { transform: skewX(-12deg) translateX(4%); }
+}
+
+/* Translucent tinted plastic */
+@layer components {
+.plastic {
+  --t: var(--color-thu);
+  position: relative;
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(color-mix(in oklab, var(--color-glint) 32%, transparent), transparent 18%),
+    color-mix(in oklab, var(--t) 62%, transparent);
+  box-shadow:
+    inset 0 1.5px 0 var(--color-glint),
+    inset 0 -24px 36px -28px color-mix(in oklab, var(--t) 45%, var(--color-shade));
+}
+.dark .plastic {
+  background:
+    linear-gradient(color-mix(in oklab, var(--color-glint) 10%, transparent), transparent 24%),
+    color-mix(in oklab, var(--t) 76%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--color-glint) 18%, transparent),
+    inset 0 -24px 36px -28px color-mix(in oklab, var(--t) 30%, var(--color-shade));
+}
+.plastic--mon { --t: var(--color-mon); }
+.plastic--tue { --t: var(--color-tue); }
+.plastic--wed { --t: var(--color-wed); }
+.plastic--thu { --t: var(--color-thu); }
+.plastic--fri { --t: var(--color-fri); }
+.plastic--sat { --t: var(--color-sat); }
+.plastic--sun { --t: var(--color-sun); }
+}
+
+/* Course imagery in the theme's daylight treatment */
+.course-media img {
+  filter: saturate(0.72) contrast(0.96) sepia(0.04);
+}
+
+/* Ink band */
+.band-ink {
+  background-color: var(--color-ink);
+  color: var(--color-paper);
+}
+.band-ink :focus-visible {
+  outline-color: var(--color-paper);
+}
+/* Night band sinks below the page; the paper text tokens stay light on it */
+.dark .band-ink {
+  --color-paper: var(--color-night-ink);
+  background-color: var(--color-night-band);
+  color: var(--color-paper);
+}
+
+/* Compatibility shim for daisyUI class names -> Tailwind + Dose tokens.
+   Layered so utilities on the same element still win. */
+@layer components {
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-input);
+  font-family: var(--font-body, var(--font-sans));
   font-weight: 500;
-  font-size: 0.875rem;
-  height: 2.5rem;
-  padding: 0 1rem;
-  transition: all 150ms;
+  font-size: 0.9375rem;
+  height: 2.75rem;
+  padding: 0 1.125rem;
+  white-space: nowrap;
   cursor: pointer;
   border: 1px solid transparent;
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+  box-shadow: inset 0 1px 0 var(--color-glint), 0 0 0 1px var(--color-rule), 0 3px 0 var(--color-rule);
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms cubic-bezier(0.22, 1, 0.36, 1), background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
-.btn:hover { opacity: 0.9; }
+.btn:hover { background-color: var(--color-paper-2); }
+.btn:active { transform: translateY(3px); box-shadow: inset 0 1px 0 var(--color-glint), 0 0 0 1px var(--color-rule); }
 .btn:disabled { opacity: 0.5; pointer-events: none; }
-.btn-primary { background-color: var(--color-primary); color: var(--color-primary-foreground); }
-.btn-secondary { background-color: var(--color-secondary); color: var(--color-secondary-foreground); }
-.btn-accent { background-color: var(--color-accent); color: var(--color-accent-foreground); }
-.btn-ghost { background-color: transparent; color: var(--color-foreground); }
-.btn-ghost:hover { background-color: var(--color-muted); }
-.btn-outline { background-color: transparent; border-color: var(--color-border); color: var(--color-foreground); }
-.btn-outline:hover { background-color: var(--color-muted); }
-.btn-sm { height: 2rem; padding: 0 0.75rem; font-size: 0.75rem; }
-.btn-lg { height: 2.75rem; padding: 0 2rem; }
+.btn-primary {
+  background-color: var(--color-primary);
+  background-image: linear-gradient(var(--color-primary), var(--color-accent-deep));
+  color: var(--color-primary-foreground);
+  border-color: transparent;
+  box-shadow: 0 0 0 1px var(--color-accent-deep), 0 3px 0 var(--color-accent-deep), inset 0 1px 0 color-mix(in oklab, var(--color-glint) 45%, transparent);
+}
+.btn-primary:hover { background-color: var(--color-accent-deep); background-image: none; }
+.btn-secondary { background: var(--color-secondary); color: var(--color-secondary-foreground); }
+.btn-secondary:hover { background: color-mix(in oklab, var(--color-secondary) 82%, var(--color-paper)); }
+.btn-ghost { background: transparent; border-color: transparent; box-shadow: none; }
+.btn-ghost:hover { background: var(--color-paper-2); box-shadow: none; }
+.btn-outline { background: var(--color-card); border-color: var(--color-rule); color: var(--color-foreground); }
+.btn-outline:hover { background: var(--color-paper-2); }
+.btn-sm { height: 2.25rem; padding: 0 0.85rem; font-size: 0.8125rem; }
+.btn-lg { height: 3.25rem; padding: 0 1.5rem; font-size: 1rem; }
 .btn-xs { height: 1.5rem; padding: 0 0.5rem; font-size: 0.7rem; }
-.btn-square { padding: 0; width: 2.5rem; }
-.btn-disabled, .btn[disabled] { opacity: 0.4; pointer-events: none; }
+.btn-square { padding: 0; width: 2.75rem; }
+.btn-disabled, .btn[disabled] { opacity: 0.45; pointer-events: none; }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  border-radius: 9999px;
-  border: 1px solid var(--color-border);
-  padding: 0.125rem 0.5rem;
+  gap: 0.3rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-rule);
+  padding: 0.15rem 0.6rem;
+  font-family: var(--font-body, var(--font-sans));
   font-size: 0.75rem;
-  font-weight: 600;
-  background-color: var(--color-primary);
-  color: var(--color-primary-foreground);
+  font-weight: 500;
+  background-color: var(--color-paper-2);
+  color: var(--color-ink-2);
 }
-.badge-outline { background-color: transparent; color: var(--color-foreground); }
-.badge-primary { background-color: var(--color-primary); color: var(--color-primary-foreground); border-color: transparent; }
-.badge-secondary { background-color: var(--color-secondary); color: var(--color-secondary-foreground); border-color: transparent; }
-.badge-accent { background-color: var(--color-accent); color: var(--color-accent-foreground); border-color: transparent; }
-.badge-ghost { background-color: var(--color-muted); color: var(--color-muted-foreground); border-color: transparent; }
-.badge-neutral { background-color: hsl(245 25% 22%); color: hsl(250 40% 96%); border-color: transparent; }
-.badge-info { background-color: var(--color-info); color: white; border-color: transparent; }
-.badge-success { background-color: var(--color-success); color: white; border-color: transparent; }
-.badge-warning { background-color: var(--color-warning); color: hsl(35 90% 12%); border-color: transparent; }
-.badge-error, .badge-destructive { background-color: hsl(0 84% 48%); color: white; border-color: transparent; }
-.badge-sm { font-size: 0.7rem; padding: 0 0.4rem; height: 1.25rem; }
-.badge-lg { font-size: 0.9rem; padding: 0.25rem 0.75rem; }
+.badge-outline { background-color: transparent; color: var(--color-ink-2); }
+.badge-primary { background-color: var(--color-accent-soft); color: var(--color-ink); border-color: transparent; }
+.badge-secondary { background-color: var(--color-accent-soft); color: var(--color-ink); border-color: transparent; }
+.badge-accent { background-color: var(--color-accent); color: var(--color-accent-ink); border-color: transparent; }
+.badge-ghost { background-color: var(--color-paper-2); color: var(--color-muted-foreground); border-color: transparent; }
+.badge-neutral { background-color: var(--color-ink); color: var(--color-paper); border-color: transparent; }
+.badge-info { background-color: var(--color-paper-3); color: var(--color-ink); border-color: transparent; }
+.badge-success { background-color: var(--color-accent-soft); color: var(--color-ink); border-color: transparent; }
+.badge-warning { background-color: var(--color-paper-3); color: var(--color-ink); border-color: transparent; }
+.badge-error, .badge-destructive { background-color: var(--color-ink-2); color: var(--color-paper); border-color: transparent; }
+.badge-sm { font-size: 0.7rem; padding: 0 0.45rem; height: 1.25rem; }
+.badge-lg { font-size: 0.875rem; padding: 0.3rem 0.8rem; }
 
 .card {
-  border-radius: var(--radius);
-  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
   background-color: var(--color-card);
   color: var(--color-foreground);
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  box-shadow: var(--shadow-card);
 }
-.card-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.card-title { font-size: 1.25rem; font-weight: 600; line-height: 1; }
+.card-body { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.card-title { font-family: var(--font-display); font-size: 1.125rem; font-weight: 700; line-height: 1.1; }
 .card-actions { display: flex; align-items: center; gap: 0.5rem; }
 
 .bg-base-100 { background-color: var(--color-background); }
-.bg-base-200 { background-color: var(--color-muted); }
-.bg-base-300 { background-color: var(--color-border); }
+.bg-base-200 { background-color: var(--color-paper-2); }
+.bg-base-300 { background-color: var(--color-paper-3); }
 .text-base-content { color: var(--color-foreground); }
+
+/* Form controls: moulded paper, 52px at 10px, 1px muted border */
+.input, .select, .textarea {
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0 0.9rem;
+  border: 1px solid var(--color-muted-foreground);
+  border-radius: var(--radius-input);
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+  font-family: var(--font-body, var(--font-sans));
+  font-size: 1rem;
+  line-height: 1.4;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+.textarea { padding: 0.7rem 0.9rem; resize: vertical; }
+.select { padding-right: 2rem; }
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-accent-soft) 70%, transparent);
+  outline: none;
+}
+.input[aria-invalid="true"],
+.select[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--color-error);
+}
+.input[aria-invalid="true"]:focus,
+.select[aria-invalid="true"]:focus,
+.textarea[aria-invalid="true"]:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-error) 18%, transparent);
+}
+.input-sm, .select-sm { min-height: 2.5rem; font-size: 0.875rem; padding: 0 0.7rem; }
+.input-sm.select-sm { padding-right: 1.75rem; }
+.textarea-sm { min-height: 4.5rem; font-size: 0.875rem; }
+.input::placeholder, .textarea::placeholder { color: var(--color-muted-foreground); }
+
+.form-control { display: flex; flex-direction: column; }
+.label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink-2);
+}
+.label-text { color: var(--color-ink-2); }
+.label-text-alt { color: var(--color-muted-foreground); font-size: 0.75rem; font-weight: 400; }
+
+.checkbox, .radio {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.radio-xs { width: 0.875rem; height: 0.875rem; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+  color: var(--color-muted-foreground);
+  font-size: 0.8125rem;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1 1 0;
+  border-top: 1px solid var(--color-rule);
+}
+
+.btn-error { background: var(--color-ink); color: var(--color-paper); box-shadow: 0 0 0 1px var(--color-ink), 0 3px 0 var(--color-ink); }
+.btn-error:hover { background: var(--color-ink-2); }
+.btn-success { background: var(--color-accent); color: var(--color-accent-ink); box-shadow: 0 0 0 1px var(--color-accent-deep), 0 3px 0 var(--color-accent-deep); }
+
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-input);
+  background-color: var(--color-paper-2);
+  color: var(--color-ink);
+  font-size: 0.9375rem;
+  box-shadow: inset 0 1px 0 var(--color-glint), 0 0 0 1px var(--color-rule);
+}
+.alert-error { background-color: var(--color-paper-3); color: var(--color-ink); }
+
+.modal {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  color: var(--color-foreground);
+}
+.modal-open {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  padding: 1rem;
+  overflow: auto;
+}
+.modal-box {
+  width: 100%;
+  max-width: 32rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background-color: var(--color-card);
+  box-shadow: var(--shadow-lift);
+}
+.modal-action { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--color-shade) 45%, transparent);
+}
+.modal-backdrop button { width: 100%; height: 100%; cursor: default; }
+
+.loading {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+.loading-sm { width: 0.9em; height: 0.9em; }
+.nowrap { white-space: nowrap; }
+@keyframes spin { to { transform: rotate(1turn); } }
+}
+
+/* Pharmacy label: paper on plastic, DM Mono throughout */
+.dose-label {
+  font-family: var(--font-outlier, var(--font-mono));
+  font-variant-numeric: tabular-nums;
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-rule);
+  border-radius: 10px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+.dose-label:has(.dose-stamp)::after {
+  content: "";
+  position: absolute;
+  left: 0.9rem;
+  right: 0.9rem;
+  bottom: 2.6rem;
+  border-top: 1px dashed var(--color-rule);
+}
+/* The label stays paper at night: a lit slip on dark plastic */
+.dark .dose-label {
+  --color-card: var(--color-label-card);
+  --color-paper: var(--color-label-card);
+  --color-paper-2: var(--color-label-paper-2);
+  --color-paper-3: var(--color-label-paper-3);
+  --color-foreground: var(--color-label-foreground);
+  --color-ink: var(--color-label-ink);
+  --color-ink-2: var(--color-label-ink-2);
+  --color-muted: var(--color-label-muted);
+  --color-muted-foreground: var(--color-label-muted-foreground);
+  --color-rule: var(--color-label-rule);
+  --color-border: var(--color-label-rule);
+  --color-primary: var(--color-label-primary);
+  --color-primary-foreground: var(--color-label-primary-foreground);
+  --color-secondary: var(--color-label-secondary);
+  --color-secondary-foreground: var(--color-label-secondary-foreground);
+  --color-accent: var(--color-label-accent);
+  --color-accent-deep: var(--color-label-accent);
+  --color-accent-soft: var(--color-label-accent-soft);
+  --color-accent-ink: var(--color-label-accent-ink);
+  --color-focus: var(--color-label-focus);
+}
+.dose-stamp {
+  font-family: var(--font-outlier, var(--font-mono));
+  border: 2px solid var(--color-accent);
+  box-shadow: inset 0 0 0 2px var(--color-card);
+  color: var(--color-accent-deep);
+  border-radius: 6px;
+  transform: rotate(-2deg);
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  line-height: 1.15;
+}
 
 /* Progress bars */
 .progress {
@@ -133,11 +620,11 @@ body {
   height: 0.5rem;
   border-radius: 9999px;
   overflow: hidden;
-  background-color: var(--color-muted);
+  background-color: var(--color-paper-3);
 }
-.progress::-webkit-progress-bar { background-color: var(--color-muted); }
-.progress::-webkit-progress-value { background-color: var(--color-primary); transition: width 300ms ease; }
-.progress::-moz-progress-bar { background-color: var(--color-primary); }
+.progress::-webkit-progress-bar { background-color: var(--color-paper-3); }
+.progress::-webkit-progress-value { background-color: var(--color-accent); }
+.progress::-moz-progress-bar { background-color: var(--color-accent); }
 
 /* Navbar sheet animations */
 @keyframes sheet-in {
@@ -151,5 +638,152 @@ body {
 .animate-sheet-in { animation: sheet-in 0.28s cubic-bezier(0.32, 0.72, 0, 1); }
 .animate-fade-in { animation: fade-in 0.2s ease-out; }
 
+/* The featured catalogue entry settles onto its stack once, at page load */
+@keyframes label-settle {
+  from { opacity: 0; transform: translateY(12px) rotate(-0.5deg); }
+  to { opacity: 1; transform: translateY(0) rotate(0); }
+}
+.animate-label-settle { animation: label-settle 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 /* Radix primitives base styles */
 [data-radix-popper-content-wrapper] { z-index: 50 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .window-light span { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Reader deck: the active item sits on a card with two edges behind it */
+.learn-deck {
+  position: relative;
+  isolation: isolate;
+}
+.learn-deck::before,
+.learn-deck::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  pointer-events: none;
+}
+.learn-deck::before {
+  transform: translateY(1rem) scaleX(0.94);
+  opacity: 0.55;
+  z-index: -2;
+}
+.learn-deck::after {
+  transform: translateY(0.5rem) scaleX(0.97);
+  opacity: 0.8;
+  z-index: -1;
+}
+.learn-card {
+  position: relative;
+  z-index: 1;
+  min-height: 18rem;
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-card);
+  box-shadow: var(--shadow-card);
+}
+.learn-card-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--color-rule);
+}
+.learn-card-body {
+  padding: 1.35rem 1.25rem 1.75rem;
+}
+@media (min-width: 640px) {
+  .learn-card-label { padding: 0.85rem 2rem; }
+  .learn-card-body { padding: 1.75rem 2rem 2.25rem; }
+}
+
+/* Slide prose: a reading column inside the wide deck card. Text elements keep
+   the measure; listings, tables and images use the full card width. */
+.slide-prose > p,
+.slide-prose > ul,
+.slide-prose > ol,
+.slide-prose > blockquote {
+  max-width: 72ch;
+}
+.slide-prose > p:first-child {
+  max-width: 68ch;
+  font-size: 1.125rem;
+  line-height: 1.65;
+  color: var(--color-ink);
+}
+.slide-prose > :first-child { margin-top: 0; }
+.slide-prose > :last-child { margin-bottom: 0; }
+
+/* Short desktop windows: drop the duplicated card label and tighten the card
+   so a full question fits without scrolling. The module header and bottom bar
+   carry the context, so the label is pure duplication here. */
+@media (max-height: 720px) and (min-width: 768px) {
+  .learn-stage { padding-top: 0.5rem; padding-bottom: 1rem; }
+  .learn-nav { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+  .learn-card-label { display: none; }
+  .learn-card-body {
+    padding-top: 0.9rem;
+    padding-bottom: 0.9rem;
+  }
+  .question-options { gap: 0.375rem; }
+  .question-option { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+}
+
+/* Deck swap: the outgoing card recedes, the incoming card rises to the front */
+@keyframes learn-card-out-next {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(0.75rem) scale(0.94); }
+}
+@keyframes learn-card-in-next {
+  from { opacity: 0; transform: translateY(0.9rem) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes learn-card-out-prev {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-0.75rem) scale(0.94); }
+}
+@keyframes learn-card-in-prev {
+  from { opacity: 0; transform: translateY(-0.9rem) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+::view-transition-group(learn-card) {
+  animation-duration: 360ms;
+  animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+html[data-deck-direction="next"]::view-transition-old(learn-card) {
+  animation: learn-card-out-next 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+html[data-deck-direction="next"]::view-transition-new(learn-card) {
+  animation: learn-card-in-next 340ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+html[data-deck-direction="prev"]::view-transition-old(learn-card) {
+  animation: learn-card-out-prev 220ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+html[data-deck-direction="prev"]::view-transition-new(learn-card) {
+  animation: learn-card-in-prev 340ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(learn-card),
+  ::view-transition-old(learn-card),
+  ::view-transition-new(learn-card) {
+    animation: none !important;
+  }
+}

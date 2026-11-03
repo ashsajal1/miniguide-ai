@@ -22,7 +22,7 @@ export default function DeleteDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-shade/45 flex items-center justify-center p-4 z-50">
       <div className="bg-card p-6 rounded-lg w-full max-w-md">
         <div className="flex flex-col items-center text-center">
           <div className="bg-error/10 p-3 rounded-full mb-4">
@@ -49,7 +49,7 @@ export default function DeleteDialog({
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Deleting...
+                Deleting…
               </>
             ) : (
               "Delete"

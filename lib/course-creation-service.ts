@@ -6,13 +6,22 @@ import { CourseOutline, ModuleOutline } from "@/lib/course-ai-service";
 import { generateSlideContent } from "@/app/course/edit/[id]/slide/ai-actions";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
 import {
+  generateWrittenTask,
+  GeneratedWrittenTask,
+} from "@/app/course/edit/[id]/written/ai-actions";
+import {
   AiScope,
   GenerationState,
   ResolvedAiContext,
 } from "@/lib/ai-context";
 
 export interface CourseGenerationProgress {
-  stage: 'creating-course' | 'generating-slides' | 'generating-questions' | 'finalizing';
+  stage:
+    | "creating-course"
+    | "generating-slides"
+    | "generating-questions"
+    | "generating-written"
+    | "finalizing";
   progress: number;
   message: string;
   currentModule?: number;
@@ -32,6 +41,15 @@ export interface GeneratedModule {
   order: number;
   slides: GeneratedSlide[];
   questions: GeneratedQuestion[];
+  written: GeneratedWritten | null;
+}
+
+export interface GeneratedWritten {
+  id: string;
+  title: string;
+  prompt: string;
+  guidance?: string;
+  order: number;
 }
 
 export interface GeneratedSlide {
@@ -54,6 +72,11 @@ export interface QuestionOption {
   text: string;
   isCorrect: boolean;
   explanation: string;
+}
+
+/** Per-module content order: 0, 1, 2… so a module can hold any number of items. */
+interface OrderCursor {
+  next: number;
 }
 
 /**
@@ -95,7 +118,11 @@ export async function createCourseFromOutline(
     // everything already generated, so later modules/slides/questions build on
     // earlier ones instead of repeating them.
     const totalModules = Math.min(outline.modules.length, 10);
-    const generationState: GenerationState = { slides: [], questions: [] };
+    const generationState: GenerationState = {
+      slides: [],
+      questions: [],
+      written: [],
+    };
     const aiContext: ResolvedAiContext = {
       course: {
         title: outline.title,
@@ -144,7 +171,12 @@ export async function createCourseFromOutline(
         order: newModule.order ?? moduleOrder,
         slides: [],
         questions: [],
+        written: null,
       };
+
+      // Content order is sequential per module, so 5 cards + 2 questions + a
+      // written task cannot collide the way a stride of 10 would.
+      const orderCursor: OrderCursor = { next: 0 };
 
       // Generate slides for this module (or use provided ones)
       let slides: GeneratedSlide[];
@@ -158,7 +190,7 @@ export async function createCourseFromOutline(
           const contentItem = await prisma.content.create({
             data: {
               type: 'SLIDE',
-              order: (moduleOrder - 1) * 10 + j + 1,
+              order: orderCursor.next++,
               module_id: moduleId,
             },
           });
@@ -187,7 +219,12 @@ export async function createCourseFromOutline(
         }
       } else {
         // Generate slides using AI
-        slides = await generateSlidesForModule(moduleOutline, moduleId, moduleOrder, aiScope);
+        slides = await generateSlidesForModule(
+          moduleOutline,
+          moduleId,
+          aiScope,
+          orderCursor
+        );
       }
       generatedModule.slides = slides;
 
@@ -203,7 +240,7 @@ export async function createCourseFromOutline(
           const questionContentItem = await prisma.content.create({
             data: {
               type: 'QUESTION',
-              order: (moduleOrder - 1) * 10 + slides.length + j + 1,
+              order: orderCursor.next++,
               module_id: moduleId,
             },
           });
@@ -253,9 +290,61 @@ export async function createCourseFromOutline(
         }
       } else {
         // Generate questions using AI
-        questions = await generateQuestionsForModule(slides, moduleId, moduleOrder, moduleOutline, aiScope);
+        questions = await generateQuestionsForModule(
+          slides,
+          moduleId,
+          moduleOutline,
+          aiScope,
+          orderCursor
+        );
       }
       generatedModule.questions = questions;
+
+      // One written practice task per module, after the questions. If the AI
+      // call fails, a deterministic task still gives every module a written part.
+      const writtenMaterial = slides
+        .map((slide) => `--- ${slide.title} ---\n${slide.content}`)
+        .join("\n\n");
+      const writtenResult = writtenMaterial.trim()
+        ? await generateWrittenTask(writtenMaterial, aiScope)
+        : null;
+      if (writtenResult && !writtenResult.success) {
+        console.warn(
+          `Using a fallback written task for "${moduleOutline.title}": ${writtenResult.error}`
+        );
+      }
+      const writtenTask: GeneratedWrittenTask = writtenResult?.success
+        ? writtenResult.task
+        : buildFallbackWrittenTask(moduleOutline);
+
+      const writtenContentItem = await prisma.content.create({
+        data: {
+          type: "WRITTEN",
+          order: orderCursor.next++,
+          module_id: moduleId,
+        },
+      });
+      const writtenRecord = await prisma.written.create({
+        data: {
+          title: writtenTask.title,
+          prompt: writtenTask.prompt,
+          guidance: writtenTask.guidance ?? null,
+          module_id: moduleId,
+          content_item_id: writtenContentItem.id,
+        },
+      });
+
+      generatedModule.written = {
+        id: writtenRecord.id,
+        title: writtenRecord.title ?? writtenTask.title,
+        prompt: writtenRecord.prompt,
+        guidance: writtenRecord.guidance ?? undefined,
+        order: writtenContentItem.order,
+      };
+      generationState.written!.push({
+        module: moduleOutline.title,
+        title: generatedModule.written.title,
+      });
 
       generatedCourse.modules.push(generatedModule);
     }
@@ -275,85 +364,55 @@ export async function createCourseFromOutline(
 }
 
 /**
- * Generates slides for a module based on its outline
+ * Generates 3-5 atomic cards for a module. Each card teaches exactly one
+ * idea: card 0 is the core idea with a concrete example, and each remaining
+ * card takes one learning objective, alternating example and distinction.
  */
 async function generateSlidesForModule(
   moduleOutline: ModuleOutline,
   moduleId: string,
-  moduleOrder: number,
-  scope?: AiScope
+  scope: AiScope | undefined,
+  orderCursor: OrderCursor
 ): Promise<GeneratedSlide[]> {
   const slides: GeneratedSlide[] = [];
+  const objectives = moduleOutline.learningObjectives
+    .map((objective) => objective.trim())
+    .filter(Boolean);
+  const cardCount = Math.min(Math.max(objectives.length + 1, 3), 5);
 
   try {
-    // Generate 2-3 slides per module based on learning objectives (limited to prevent large payloads)
-    const numSlides = Math.min(moduleOutline.learningObjectives.length + 1, 3);
-
-    for (let i = 0; i < numSlides; i++) {
-      let slidePrompt = `Create an educational slide for the module: ${moduleOutline.title}`;
+    for (let i = 0; i < cardCount; i++) {
+      let slidePrompt: string;
 
       if (i === 0) {
-        // Introduction slide - Hook and overview
-        slidePrompt = `Create an engaging introduction slide for the module "${moduleOutline.title}".
+        slidePrompt = `Write card 1 of ${cardCount} for the module "${moduleOutline.title}".
 
-Module Description: ${moduleOutline.description}
-
-Learning Objectives: ${moduleOutline.learningObjectives.join(', ')}
-
-Make this slide compelling and set expectations for what students will learn. Include:
-- A thought-provoking question or statement
-- Brief overview of what will be covered
-- Why this topic matters (real-world relevance)`;
-      } else if (i === numSlides - 1) {
-        // Summary/Conclusion slide
-        slidePrompt = `Create a comprehensive summary slide for the module "${moduleOutline.title}".
-
-Learning Objectives Covered: ${moduleOutline.learningObjectives.join(', ')}
-
-Include:
-- Key takeaways (3-4 main points)
-- Next steps or what students should do next
-- A memorable quote or key principle
-- Connection to broader course goals`;
+Teach the module's single core idea and make it concrete with one real-world example. Do not introduce the module, list what will be covered, or summarise it.
+Module description: ${moduleOutline.description}`;
       } else {
-        // Content slides - Deep dive into specific objectives
-        const objectiveIndex = i - 1;
-        const currentObjective = moduleOutline.learningObjectives[objectiveIndex];
+        const objective = objectives[i - 1];
+        const angle =
+          i % 2 === 1
+            ? "Angle: show a concrete real-world example that makes this objective click."
+            : "Angle: mark the distinction from a nearby idea, or the mistake learners commonly make.";
 
-        if (objectiveIndex === 0) {
-          // First content slide - Core concepts
-          slidePrompt = `Create a detailed content slide explaining the core concept: "${currentObjective}"
+        slidePrompt = objective
+          ? `Write card ${i + 1} of ${cardCount} for the module "${moduleOutline.title}".
 
-For the module "${moduleOutline.title}", focus on:
-- Clear definition/explanation
-- Key components or elements
-- Visual representation ideas (diagrams, examples)
-- Common misconceptions to avoid
-- Practical applications`;
-        } else if (objectiveIndex === 1) {
-          // Second content slide - Examples/Case studies
-          slidePrompt = `Create an examples slide for: "${currentObjective}"
+Cover exactly this one learning objective: "${objective}"
+${angle}
+Do not cover any other objective, and do not summarise the module.`
+          : `Write card ${i + 1} of ${cardCount} for the module "${moduleOutline.title}".
 
-For the module "${moduleOutline.title}", include:
-- 2-3 concrete, real-world examples
-- Step-by-step breakdown of a process
-- Before/after comparisons
-- Success metrics or outcomes
-- Industry best practices`;
-        } else {
-          // Additional content slides - Advanced topics
-          slidePrompt = `Create an advanced concepts slide for: "${currentObjective}"
-
-For the module "${moduleOutline.title}", cover:
-- Common challenges or pitfalls
-- Advanced techniques or strategies
-- Tools/frameworks that help
-- Future trends or developments
-- Expert tips and recommendations`;
-        }
+${
+  i % 2 === 1
+    ? "Show one concrete real-world example of the module's idea."
+    : "Show the distinction between the module's idea and the mistake learners commonly make."
+}
+Do not introduce or summarise the module.`;
       }
 
-      // Generate slide content using existing AI function (stateful: sees course, module and prior slides)
+      // Generate one card (stateful: sees course, module and prior cards)
       const slideResult = await generateSlideContent(slidePrompt, undefined, scope);
 
       if (slideResult.success && slideResult.content) {
@@ -361,7 +420,7 @@ For the module "${moduleOutline.title}", cover:
         const contentItem = await prisma.content.create({
           data: {
             type: 'SLIDE',
-            order: (moduleOrder - 1) * 10 + i + 1, // Module-based ordering
+            order: orderCursor.next++,
             module_id: moduleId,
           },
         });
@@ -403,9 +462,9 @@ For the module "${moduleOutline.title}", cover:
 async function generateQuestionsForModule(
   slides: GeneratedSlide[],
   moduleId: string,
-  moduleOrder: number,
   moduleOutline: ModuleOutline,
-  scope?: AiScope
+  scope: AiScope | undefined,
+  orderCursor: OrderCursor
 ): Promise<GeneratedQuestion[]> {
   const questions: GeneratedQuestion[] = [];
 
@@ -455,7 +514,7 @@ Create a challenging but fair question that requires understanding of the materi
         const questionContentItem = await prisma.content.create({
           data: {
             type: 'QUESTION',
-            order: (moduleOrder - 1) * 10 + slides.length + i + 1, // After slides
+            order: orderCursor.next++,
             module_id: moduleId,
           },
         });
@@ -510,5 +569,24 @@ Create a challenging but fair question that requires understanding of the materi
   }
 
   return questions;
+}
+
+/** Deterministic written task for when the AI call fails, so no module is left without practice. */
+function buildFallbackWrittenTask(
+  moduleOutline: ModuleOutline
+): GeneratedWrittenTask {
+  const objectives = moduleOutline.learningObjectives
+    .map((objective) => objective.trim())
+    .filter(Boolean);
+  const titleWords = moduleOutline.title.trim().split(/\s+/).slice(0, 5).join(" ");
+
+  return {
+    title: `Explain ${titleWords}`,
+    prompt: `In 3-6 sentences, explain the core idea of "${moduleOutline.title}" in your own words and give one concrete example.`,
+    guidance:
+      objectives.length > 0
+        ? `A strong answer covers: ${objectives.slice(0, 3).join("; ")}.`
+        : "A strong answer states the core idea and supports it with one concrete example.",
+  };
 }
 

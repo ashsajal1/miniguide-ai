@@ -34,12 +34,12 @@ export default function EnrollButton({
     <button
       onClick={onEnroll}
       disabled={isPending}
-      className={`btn btn-primary gap-2 ${className}`}
+      className={`btn btn-primary gap-2 nowrap ${className}`}
     >
       {isPending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Enrolling...
+          Enrolling…
         </>
       ) : (
         <>

@@ -16,23 +16,23 @@ import {
 import Link from 'next/link';
 
 const inputClasses =
-  'w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-colors';
+  'h-[52px] w-full rounded-[10px] border border-muted-foreground bg-muted px-3.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     subject: '',
-    message: ''
+    message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<{success: boolean; message: string} | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -42,24 +42,23 @@ export default function ContactPage() {
 
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
 
       setSubmitStatus({
         success: true,
-        message: "Your message has been sent successfully! We'll get back to you soon."
+        message: "Your message has been sent. We'll get back to you soon.",
       });
 
-      // Reset form
       setFormData({
         name: '',
         email: '',
         subject: '',
-        message: ''
+        message: '',
       });
     } catch {
       setSubmitStatus({
         success: false,
-        message: 'Something went wrong. Please try again later.'
+        message: 'Something went wrong. Please try again later.',
       });
     } finally {
       setIsSubmitting(false);
@@ -67,36 +66,38 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-background">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -left-24 h-80 w-80 rounded-full bg-primary/15 blur-3xl" />
-          <div className="absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-secondary/15 blur-3xl" />
+    <div className="min-h-screen">
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b border-rule">
+        <div className="window-light" aria-hidden>
+          <span />
+          <span />
         </div>
-        <div className="relative container mx-auto px-4 py-16 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-foreground">Get in Touch</h1>
-          <p className="text-lg md:text-xl max-w-2xl mx-auto text-muted-foreground">
-            Have questions or feedback? We&apos;d love to hear from you!
+        <div className="relative mx-auto max-w-[1240px] px-5 sm:px-8 py-14 lg:py-20">
+          <h1 className="max-w-[14ch] text-[clamp(2.4rem,4.6vw,3.8rem)] leading-[1.02] text-foreground">
+            Tell us what you need.
+          </h1>
+          <p className="mt-5 max-w-[46ch] text-[16px] leading-relaxed text-ink-2">
+            Questions, feedback, or a course idea. We would like to hear it.
           </p>
         </div>
       </section>
 
-      {/* Contact Content */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 md:px-8">
-          <div className="flex flex-col lg:flex-row gap-12">
-            {/* Contact Form */}
-            <div className="lg:w-2/3">
-              <div className="rounded-2xl bg-card ring-1 ring-border shadow-xl shadow-primary/5 p-6 sm:p-8">
-                <h2 className="text-2xl font-bold tracking-tight mb-6">Send us a Message</h2>
+      {/* Contact content */}
+      <section className="mx-auto max-w-[1240px] px-5 sm:px-8 py-12 lg:py-16">
+        <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
+          {/* Form on a sunken plastic tray */}
+          <div className="lg:col-span-7">
+            <div className="plastic plastic--thu rounded-[14px] p-2">
+              <div className="rounded-[10px] bg-card p-6 sm:p-8">
+                <h2 className="text-2xl text-foreground">Send a message</h2>
 
                 {submitStatus && (
                   <div
-                    className={`mb-6 flex items-start gap-3 rounded-xl border p-4 text-sm ${
+                    className={`mt-5 flex items-start gap-3 rounded-[10px] border p-4 text-sm ${
                       submitStatus.success
-                        ? 'border-success/30 bg-success/10 text-success'
-                        : 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400'
+                        ? 'border-accent bg-accent-soft text-ink'
+                        : 'border-ink-2 bg-paper-2 text-ink'
                     }`}
                     role="status"
                   >
@@ -104,11 +105,11 @@ export default function ContactPage() {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div>
-                      <label htmlFor="name" className="block text-sm font-medium mb-2">
-                        Your Name
+                      <label htmlFor="name" className="mb-2 block text-sm font-medium text-ink-2">
+                        Your name
                       </label>
                       <input
                         type="text"
@@ -122,8 +123,8 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label htmlFor="email" className="block text-sm font-medium mb-2">
-                        Email Address
+                      <label htmlFor="email" className="mb-2 block text-sm font-medium text-ink-2">
+                        Email address
                       </label>
                       <input
                         type="email"
@@ -138,7 +139,7 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium mb-2">
+                    <label htmlFor="subject" className="mb-2 block text-sm font-medium text-ink-2">
                       Subject
                     </label>
                     <input
@@ -153,8 +154,8 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="message" className="block text-sm font-medium mb-2">
-                      Your Message
+                    <label htmlFor="message" className="mb-2 block text-sm font-medium text-ink-2">
+                      Your message
                     </label>
                     <textarea
                       id="message"
@@ -162,26 +163,26 @@ export default function ContactPage() {
                       value={formData.message}
                       onChange={handleChange}
                       rows={5}
-                      className={`${inputClasses} resize-y`}
+                      className="w-full resize-y rounded-[10px] border border-muted-foreground bg-muted px-3.5 py-3 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25"
                       required
                     ></textarea>
                   </div>
 
-                  <div className="pt-2">
+                  <div>
                     <button
                       type="submit"
-                      className="btn btn-primary gap-2 w-full md:w-auto disabled:opacity-60"
+                      className="btn btn-primary w-full gap-2 disabled:opacity-60 md:w-auto"
                       disabled={isSubmitting}
                     >
                       {isSubmitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Sending...
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                          Sending
                         </>
                       ) : (
                         <>
-                          <Send className="w-4 h-4" />
-                          Send Message
+                          <Send className="h-4 w-4" aria-hidden />
+                          Send message
                         </>
                       )}
                     </button>
@@ -189,108 +190,101 @@ export default function ContactPage() {
                 </form>
               </div>
             </div>
+          </div>
 
-            {/* Contact Information */}
-            <div className="lg:w-1/3 space-y-8">
-              <div>
-                <h2 className="text-2xl font-bold tracking-tight mb-3">Contact Information</h2>
-                <p className="text-muted-foreground">
-                  Have questions or need assistance? Reach out to us through any of the following channels.
-                </p>
-              </div>
+          {/* Contact information as pharmacy labels */}
+          <div className="space-y-4 lg:col-span-5">
+            <div>
+              <h2 className="text-2xl text-foreground">Other ways to reach us</h2>
+              <p className="mt-2 max-w-[38ch] text-sm leading-relaxed text-muted-foreground">
+                Pick the channel that suits you. We answer on weekdays.
+              </p>
+            </div>
 
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Email Us</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">support@minicourse.com</p>
-                    <p className="text-sm text-muted-foreground">info@minicourse.com</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Call Us</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">+1 (555) 123-4567</p>
-                    <p className="text-sm text-muted-foreground">Mon - Fri, 9:00 AM - 6:00 PM EST</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-full bg-primary/10 text-primary shrink-0">
-                    <MapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">Visit Us</h3>
-                    <p className="text-sm text-muted-foreground mt-0.5">
-                      123 Learning Street<br />
-                      San Francisco, CA 94107<br />
-                      United States
-                    </p>
-                  </div>
+            <div className="dose-label p-5 pb-5">
+              <div className="flex items-start gap-3 border-b border-rule pb-4">
+                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" aria-hidden />
+                <div>
+                  <h3 className="font-sans text-sm font-medium text-foreground">Email</h3>
+                  <p className="mt-1 text-[12px] text-ink-2">support@minicourse.com</p>
+                  <p className="text-[12px] text-ink-2">info@minicourse.com</p>
                 </div>
               </div>
-
-              <div className="pt-4">
-                <h3 className="font-semibold mb-3">Follow Us</h3>
-                <div className="flex gap-3">
-                  {[
-                    { name: 'Twitter', icon: Twitter },
-                    { name: 'LinkedIn', icon: Linkedin },
-                    { name: 'Facebook', icon: Facebook },
-                    { name: 'Instagram', icon: Instagram },
-                    { name: 'YouTube', icon: Youtube }
-                  ].map((social) => (
-                    <a
-                      key={social.name}
-                      href={`#${social.name.toLowerCase()}`}
-                      className="grid place-items-center h-10 w-10 rounded-full bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                      aria-label={social.name}
-                    >
-                      <social.icon className="h-4 w-4" />
-                    </a>
-                  ))}
+              <div className="flex items-start gap-3 border-b border-rule py-4">
+                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" aria-hidden />
+                <div>
+                  <h3 className="font-sans text-sm font-medium text-foreground">Phone</h3>
+                  <p className="mt-1 text-[12px] text-ink-2">+1 (555) 123-4567</p>
+                  <p className="text-[12px] text-ink-2">Mon-Fri, 9:00-18:00 EST</p>
                 </div>
+              </div>
+              <div className="flex items-start gap-3 pt-4">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" aria-hidden />
+                <div>
+                  <h3 className="font-sans text-sm font-medium text-foreground">Visit</h3>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink-2">
+                    123 Learning Street
+                    <br />
+                    San Francisco, CA 94107
+                    <br />
+                    United States
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-3 text-sm font-medium text-foreground">Follow us</h3>
+              <div className="flex gap-2">
+                {[
+                  { name: 'Twitter', icon: Twitter },
+                  { name: 'LinkedIn', icon: Linkedin },
+                  { name: 'Facebook', icon: Facebook },
+                  { name: 'Instagram', icon: Instagram },
+                  { name: 'YouTube', icon: Youtube },
+                ].map((social) => (
+                  <a
+                    key={social.name}
+                    href={`#${social.name.toLowerCase()}`}
+                    className="grid h-10 w-10 place-items-center rounded-full border border-rule bg-card text-muted-foreground transition-colors hover:border-accent hover:text-accent"
+                    aria-label={social.name}
+                  >
+                    <social.icon className="h-4 w-4" aria-hidden />
+                  </a>
+                ))}
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Map Section */}
-      <section className="pb-16">
-        <div className="container mx-auto px-4 sm:px-6 md:px-8">
-          <h2 className="text-2xl font-bold tracking-tight mb-8 text-center">Find Us on the Map</h2>
-          <div className="aspect-video rounded-2xl bg-card ring-1 ring-border overflow-hidden flex items-center justify-center">
-            <div className="text-center text-muted-foreground/50">
-              <MapPin className="w-12 h-12 mx-auto mb-4" />
-              <p>Map Integration</p>
-              <p className="text-sm">(Map would be displayed here in production)</p>
+      {/* Map placeholder */}
+      <section className="mx-auto max-w-[1240px] px-5 pb-16 sm:px-8">
+        <div className="rounded-[14px] border border-rule bg-card p-2">
+          <div className="flex aspect-[16/7] items-center justify-center rounded-[10px] bg-paper-2">
+            <div className="text-center text-muted-foreground">
+              <MapPin className="mx-auto mb-3 h-8 w-8" aria-hidden />
+              <p className="text-xs">123 Learning Street, San Francisco</p>
+              <p className="mt-1 text-xs">Map integration comes with production</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative overflow-hidden bg-background border-t border-border">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-32 -right-24 h-80 w-80 rounded-full bg-secondary/15 blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-primary/15 blur-3xl" />
-        </div>
-        <div className="relative container mx-auto px-4 py-16 text-center">
-          <h2 className="text-3xl font-extrabold tracking-tight mb-4 text-foreground">Have More Questions?</h2>
-          <p className="text-lg max-w-2xl mx-auto mb-8 text-muted-foreground">
-            Learn more about our platform and how it works.
-          </p>
-          <Link href="/about" className="btn btn-primary btn-lg shadow-lg shadow-primary/25">
-            Visit About Page
-          </Link>
+      {/* CTA */}
+      <section className="border-t border-rule bg-paper-2/60">
+        <div className="mx-auto max-w-[1240px] px-5 py-14 sm:px-8">
+          <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-[clamp(1.7rem,3vw,2.4rem)] text-foreground">Have more questions?</h2>
+              <p className="mt-2 max-w-[42ch] text-sm text-muted-foreground">
+                Learn more about the platform and how it works.
+              </p>
+            </div>
+            <Link href="/about" className="btn btn-primary">
+              Visit about page
+            </Link>
+          </div>
         </div>
       </section>
     </div>

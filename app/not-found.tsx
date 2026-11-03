@@ -1,71 +1,43 @@
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, BookOpen, Compass, LifeBuoy } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen } from "lucide-react";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-      <div className="text-center max-w-xl mx-auto">
-        {/* 404 */}
-        <div className="mb-8">
-          <p
-            aria-hidden
-            className="text-[6rem] sm:text-[8rem] leading-none font-extrabold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent select-none"
-          >
-            404
-          </p>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground mt-2">
-            Page not found
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            Oops! The page you&apos;re looking for doesn&apos;t exist or has
-            been moved.
-          </p>
-        </div>
+    <div className="flex min-h-screen flex-col items-center justify-center p-6">
+      <div className="w-full max-w-xl">
+        <p className="font-mono text-[clamp(4rem,10vw,7rem)] leading-none font-medium text-paper-3 select-none">
+          404
+        </p>
+        <h1 className="mt-2 text-[clamp(1.9rem,3.6vw,2.8rem)] text-foreground">
+          This page isn&apos;t here.
+        </h1>
+        <p className="mt-3 max-w-[40ch] text-[15px] leading-relaxed text-muted-foreground">
+          The page you were looking for may have moved, or the link may be out of date.
+        </p>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
-          <Link href="/" className="btn btn-primary btn-lg gap-2 shadow-lg shadow-primary/25">
-            <ArrowLeft className="h-5 w-5" />
-            Back to Home
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+          <Link href="/" className="btn btn-primary gap-2">
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Back to home
           </Link>
-          <Link href="/course" className="btn btn-outline btn-lg gap-2">
-            <BookOpen className="h-5 w-5" />
-            Browse Courses
+          <Link href="/course" className="btn btn-outline gap-2">
+            <BookOpen className="h-4 w-4" aria-hidden />
+            Browse courses
           </Link>
         </div>
 
-        {/* Help links */}
-        <div className="pt-6 border-t border-border">
-          <p className="flex items-center justify-center gap-1.5 text-sm font-medium text-muted-foreground mb-4">
-            <Compass className="h-4 w-4" />
-            Looking for something else?
-          </p>
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
-            <Link
-              href="/faq"
-              className="font-semibold text-primary hover:underline"
-            >
+        <div className="mt-10 border-t border-rule pt-6">
+          <p className="mb-3 text-sm text-muted-foreground">Looking for something else?</p>
+          <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <Link href="/faq" className="font-medium text-accent-deep hover:underline">
               FAQ
             </Link>
-            <span className="text-border" aria-hidden>
-              |
-            </span>
-            <Link
-              href="/support"
-              className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
-            >
-              <LifeBuoy className="h-3.5 w-3.5" />
+            <Link href="/support" className="font-medium text-accent-deep hover:underline">
               Support
             </Link>
-            <span className="text-border" aria-hidden>
-              |
-            </span>
-            <Link
-              href="/contact"
-              className="inline-flex items-center gap-1.5 font-semibold text-primary hover:underline"
-            >
-              Contact Us
-              <ArrowRight className="h-3.5 w-3.5" />
+            <Link href="/contact" className="inline-flex items-center gap-1.5 font-medium text-accent-deep hover:underline">
+              Contact us
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           </div>
         </div>

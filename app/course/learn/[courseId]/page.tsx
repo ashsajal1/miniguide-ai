@@ -12,6 +12,7 @@ import {
   Trophy,
   BookOpen,
   ArrowLeft,
+  PenLine,
 } from "lucide-react";
 
 export async function generateMetadata({
@@ -55,7 +56,7 @@ export default async function page({
       created_at: true,
       updated_at: true,
       _count: {
-        select: { slides: true },
+        select: { slides: true, written: true },
       },
     },
     orderBy: {
@@ -110,32 +111,32 @@ export default async function page({
         {/* Back to Course */}
         <Link
           href={`/course/${courseId}`}
-          className="inline-flex items-center gap-1.5 text-sm text-foreground/50 hover:text-primary transition-colors mb-6"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Course
         </Link>
 
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-4">
-            <BookOpen className="h-7 w-7 text-primary" />
+        <div className="mb-10">
+          <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-[10px] bg-accent-soft">
+            <BookOpen className="h-6 w-6 text-accent-deep" aria-hidden />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">
-            Course Learning Path
+          <h1 className="mb-2 text-[clamp(1.9rem,3.4vw,2.6rem)] text-foreground">
+            Course learning path
           </h1>
-          <p className="text-sm text-foreground/50 max-w-md mx-auto">
+          <p className="max-w-md text-sm text-muted-foreground">
             Follow the modules below to track your progress through the course.
           </p>
         </div>
 
         {/* Progress Card */}
-        <div className="card bg-card border border shadow-sm mb-8">
-          <div className="card-body !p-5">
+        <div className="mb-8 rounded-[14px] border border-rule bg-card">
+          <div className="p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="space-y-0.5">
                 <h3 className="text-sm font-semibold">Your Progress</h3>
-                <p className="text-xs text-foreground/40">
+                <p className="text-xs text-muted-foreground">
                   {completedCount} of {totalModules} modules completed
                 </p>
               </div>
@@ -143,17 +144,13 @@ export default async function page({
                 <span className="text-2xl font-bold text-primary">
                   {progressPercent}
                 </span>
-                <span className="text-sm text-foreground/40">%</span>
+                <span className="text-sm text-muted-foreground">%</span>
               </div>
             </div>
-            <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-paper-3">
               <div
-                className={`h-full rounded-full transition-all duration-700 ${
-                  allCompleted
-                    ? "bg-gradient-to-r from-success to-success/80"
-                    : "bg-gradient-to-r from-primary to-secondary"
-                }`}
-                style={{ width: `${progressPercent}%` }}
+                className="h-full origin-left rounded-full bg-accent transition-transform duration-700"
+                style={{ transform: `scaleX(${progressPercent / 100})` }}
               />
             </div>
             {allCompleted && (
@@ -189,12 +186,12 @@ export default async function page({
                   {/* Marker */}
                   <div className="flex-shrink-0 z-10">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                      className={`flex h-10 w-10 items-center justify-center rounded-full font-mono text-[12px] font-medium ${
                         isCompleted
-                          ? "bg-success text-success-content"
+                          ? "bg-accent text-accent-ink"
                           : isNextModule
-                            ? "bg-primary text-primary-content ring-4 ring-primary/20"
-                            : "bg-muted text-foreground/40"
+                            ? "bg-accent-soft text-ink ring-4 ring-accent-soft"
+                            : "bg-paper-3 text-muted-foreground"
                       }`}
                     >
                       {isCompleted ? (
@@ -207,15 +204,15 @@ export default async function page({
 
                   {/* Card */}
                   <div
-                    className={`flex-1 card border shadow-sm hover:shadow-md transition-all ${
+                    className={`flex-1 rounded-[10px] border transition-shadow hover:shadow-[var(--shadow-card)] ${
                       isNextModule
-                        ? "border-primary/30 bg-primary/[0.02]"
+                        ? "border-accent bg-accent-soft/30"
                         : isCompleted
-                          ? "border-success/20 bg-card"
-                          : "border bg-card"
+                          ? "border-rule bg-card"
+                          : "border-rule bg-card"
                     }`}
                   >
-                    <div className="card-body !p-4">
+                    <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
@@ -223,25 +220,31 @@ export default async function page({
                               {module.title}
                             </h2>
                             {isCompleted && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-semibold uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-medium">
                                 <CheckCircle className="h-2.5 w-2.5" />
                                 Done
                               </span>
                             )}
                             {isNextModule && !isCompleted && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium">
                                 <Play className="h-2.5 w-2.5" />
                                 Up Next
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-3 text-xs text-foreground/40">
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
                             <span className="inline-flex items-center gap-1">
                               <FileText className="h-3 w-3" />
                               {module._count.slides} slide
                               {module._count.slides !== 1 ? "s" : ""}
                             </span>
+                            {module._count.written > 0 && (
+                              <span className="inline-flex items-center gap-1">
+                                <PenLine className="h-3 w-3" />
+                                {module._count.written} written
+                              </span>
+                            )}
                             <span className="inline-flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {new Date(
@@ -303,8 +306,8 @@ export default async function page({
         {courseModules.length === 0 && (
           <div className="card bg-card border border border-dashed">
             <div className="card-body items-center text-center !py-12">
-              <BookOpen className="h-10 w-10 text-foreground/15 mb-2" />
-              <p className="text-sm text-foreground/40">
+              <BookOpen className="h-10 w-10 text-muted-foreground/50 mb-2" />
+              <p className="text-sm text-muted-foreground">
                 No modules in this course yet.
               </p>
             </div>
