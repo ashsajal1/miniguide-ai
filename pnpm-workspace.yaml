@@ -6,6 +6,7 @@ allowBuilds:
   esbuild: false
   sharp: false
   unrs-resolver: false
+  workerd: true
 
 publicHoistPattern:
   - "@prisma/*"

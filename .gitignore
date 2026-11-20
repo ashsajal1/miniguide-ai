@@ -55,3 +55,6 @@ deno.lock
 .hallmark/
 .qoder/
 .impeccable/
+/dist/
+.vinext/
+.cloudflare/
