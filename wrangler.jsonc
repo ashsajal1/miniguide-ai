@@ -6,10 +6,13 @@
     "directory": ".cloudflare/output/v1/workers/default/assets",
     "html_handling": "none",
     "not_found_handling": "none",
-    "run_worker_first": ["/*", "!/_next/static/*", "!/*/_next/static/*"]
+    "run_worker_first": ["/*", "!/_next/static/*", "!/*/_next_static/*"]
   },
   "env": {
     "ASSETS": { "type": "assets" }
+  },
+  "vars": {
+    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuYWkuc2FqYWxsYWJzLmNvbSQ"
   },
   "observability": {
     "enabled": false,
