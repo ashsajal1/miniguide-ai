@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "bun@1.2.0",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "",
     "dev": "bun next dev",
     "build": "prisma migrate deploy && bun next build",
     "start": "bun next start",
@@ -14,9 +14,12 @@
     "test:ui": "bun vitest --ui",
     "test:coverage": "bun vitest --coverage",
     "dev:vinext": "bun vite dev --port 3001",
-    "build:vinext": "bun vite build",
+    "build:vinext": "prisma generate && bun vite build",
     "start:vinext": "bun vite preview",
-    "deploy:vinext": "bun vinext-cloudflare deploy"
+    "deploy:vinext": "bun vinext-cloudflare deploy",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.75",
