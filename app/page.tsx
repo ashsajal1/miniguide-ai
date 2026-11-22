@@ -9,6 +9,13 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
+import {
+  HowItWorks,
+  FeaturesSection,
+  Testimonials,
+  TrustSection,
+  FAQSection,
+} from "@/app/components/landing/home-sections";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +77,12 @@ export default async function Home() {
             </ol>
           </div>
         </section>
+
+        <HowItWorks />
+        <FeaturesSection />
+        <Testimonials />
+        <TrustSection />
+        <FAQSection />
       </div>
     );
   }
