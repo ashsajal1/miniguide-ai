@@ -36,14 +36,15 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const { userId } = await auth();
   const course = await prisma.course.findUnique({
     where: { id },
-    select: { name: true, description: true, thumbnail_url: true },
+    select: { name: true, description: true, thumbnail_url: true, creator: true },
   });
 
-  if (!course) {
+  if (!course || course.creator !== userId) {
     return {
-      title: "Course Not Found",
+      title: "Guide Not Found",
     };
   }
 
@@ -86,8 +87,10 @@ export default async function CoursePage({
     },
   });
 
-  // If course ID doesn't match, show 404
-  if (!course) {
+  const { userId: clerkId } = await auth();
+
+  // Guides are private: only the creator can open one.
+  if (!course || course.creator !== clerkId) {
     notFound();
   }
 
@@ -99,7 +102,6 @@ export default async function CoursePage({
   } catch (error) {
     console.warn("Failed to fetch rating data:", error);
   }
-  const { userId: clerkId } = await auth();
 
   const totalLessons = course.modules.reduce((sum, m) => sum + m._count.slides, 0);
   const totalQuestions = course.modules.reduce((sum, m) => sum + m._count.questions, 0);
