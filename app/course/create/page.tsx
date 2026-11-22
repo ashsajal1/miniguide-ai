@@ -23,10 +23,11 @@ export default async function CreateCoursePage() {
             Course builder
           </p>
           <h1 className="mt-4 text-[clamp(2.2rem,4.4vw,3.4rem)] text-foreground">
-            Create a course.
+            Create a guide.
           </h1>
           <p className="mt-4 max-w-[46ch] text-[15px] leading-relaxed text-muted-foreground">
-            Build it yourself, or let AI draft the outline from a document URL. You can edit everything either way.
+            Bring a document and let AI draft a guide shaped by your profile
+            context, or build one yourself. You can edit everything either way.
           </p>
         </div>
 
@@ -81,7 +82,7 @@ export default async function CreateCoursePage() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-xl text-ink">Generate from URL</h2>
+                    <h2 className="text-xl text-ink">Generate from a document</h2>
                     <span className="rounded-full bg-card/70 px-2 py-0.5 text-[10px] font-medium text-ink">
                       AI
                     </span>
@@ -91,14 +92,16 @@ export default async function CreateCoursePage() {
               </div>
 
               <p className="mb-7 text-sm leading-relaxed text-ink/75">
-                Paste a document URL and let AI generate a complete course outline with modules, slide cards, questions, and a written task automatically.
+                Paste a link or the text of any document and let AI generate a
+                complete guide shaped by your profile context: modules, cards,
+                questions, and a written task.
               </p>
 
               <ul className="mb-8 space-y-2.5">
                 {[
-                  "Google Docs, PDFs, web articles",
-                  "AI-generated slide cards and questions",
-                  "A written task with AI feedback",
+                  "Web articles, Google Docs, PDFs (paste text)",
+                  "Personalised examples and depth",
+                  "AI-generated cards and questions",
                   "Fully editable after generation",
                 ].map((item) => (
                   <li key={item} className="flex items-center gap-2.5 text-sm text-ink/80">
@@ -110,7 +113,7 @@ export default async function CreateCoursePage() {
 
               <div className="mt-auto">
                 <span className="btn btn-primary w-full">
-                  Generate from URL
+                  Generate from a document
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </span>
               </div>

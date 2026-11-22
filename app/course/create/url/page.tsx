@@ -130,14 +130,14 @@ function UrlCourseCreationFlow() {
               className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
-              Create course
+              Create guide
             </Link>
             <h1 className="mt-4 font-display text-[clamp(2rem,4vw,3rem)] font-bold leading-[1.02] tracking-[-0.03em] text-foreground">
-              Create a course from a URL
+              Create a guide from a document
             </h1>
             <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
-              Paste a document or article. We read it, draft an outline with AI,
-              and you decide what goes into the course.
+              Paste a link or the document text. We read it, draft an outline
+              shaped by your profile context, and you decide what goes in.
             </p>
           </div>
 

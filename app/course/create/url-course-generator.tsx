@@ -1,7 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { generateCourseOutline, CourseOutline } from "@/lib/course-ai-service";
+import {
+  generateCourseOutline,
+  generateCourseOutlineFromText,
+  CourseOutline,
+} from "@/lib/course-ai-service";
 import {
   AlertCircle,
   Link as LinkIcon,
@@ -13,6 +17,8 @@ import {
 interface UrlCourseGeneratorProps {
   onOutlineGenerated: (outline: CourseOutline) => void;
 }
+
+type SourceMode = "link" | "text";
 
 function validateUrl(value: string) {
   if (!value) {
@@ -32,7 +38,10 @@ function validateUrl(value: string) {
 export default function UrlCourseGenerator({
   onOutlineGenerated,
 }: UrlCourseGeneratorProps) {
+  const [mode, setMode] = useState<SourceMode>("link");
   const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,42 +50,96 @@ export default function UrlCourseGenerator({
     event.preventDefault();
     if (isGenerating) return;
 
-    const value = url.trim();
-    const validationError = validateUrl(value);
-    if (validationError) {
-      setError(validationError);
-      inputRef.current?.focus();
+    if (mode === "link") {
+      const value = url.trim();
+      const validationError = validateUrl(value);
+      if (validationError) {
+        setError(validationError);
+        inputRef.current?.focus();
+        return;
+      }
+
+      setError("");
+      setIsGenerating(true);
+      try {
+        const result = await generateCourseOutline(value);
+        if (result.success && result.outline) {
+          onOutlineGenerated(result.outline);
+          return;
+        }
+        setError(
+          result.error ||
+            "We couldn't draft an outline from that page. Try a different link."
+        );
+      } catch {
+        setError("We couldn't reach that page. Check the link and try again.");
+      } finally {
+        setIsGenerating(false);
+      }
+      return;
+    }
+
+    if (text.trim().length < 50) {
+      setError(
+        "Paste at least a paragraph of the document. For a PDF, open it and copy the text."
+      );
       return;
     }
 
     setError("");
     setIsGenerating(true);
-
     try {
-      const result = await generateCourseOutline(value);
+      const result = await generateCourseOutlineFromText(title, text);
       if (result.success && result.outline) {
         onOutlineGenerated(result.outline);
         return;
       }
-      setError(
-        result.error ||
-          "We couldn't draft an outline from that page. Try a different link."
-      );
+      setError(result.error || "We couldn't draft an outline from that text.");
     } catch {
-      setError(
-        "We couldn't reach that page. Check the link and try again."
-      );
+      setError("We couldn't draft an outline. Please try again.");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const describedBy = error
-    ? "source-url-hint source-url-error"
-    : "source-url-hint";
+    ? "source-hint source-error"
+    : "source-hint";
 
   return (
     <div className="space-y-3">
+      <div
+        role="tablist"
+        aria-label="Document source"
+        className="flex gap-1 rounded-[10px] border border-rule bg-paper-2 p-1"
+      >
+        {(
+          [
+            { id: "link", label: "Link" },
+            { id: "text", label: "Paste text or PDF" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={mode === tab.id}
+            onClick={() => {
+              setMode(tab.id);
+              setError("");
+            }}
+            disabled={isGenerating}
+            className={`flex-1 rounded-[8px] px-3 py-2 text-sm font-medium transition-colors ${
+              mode === tab.id
+                ? "bg-card text-foreground shadow-[var(--shadow-card)]"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <form
         noValidate
         onSubmit={handleSubmit}
@@ -88,75 +151,116 @@ export default function UrlCourseGenerator({
               htmlFor="source-url"
               className="text-sm font-medium text-ink"
             >
-              Document URL
+              {mode === "link" ? "Document URL" : "Document text"}
             </label>
             <span className="dose-stamp text-[10px]" aria-hidden>
               AI draft
             </span>
           </div>
-          <p
-            id="source-url-hint"
-            className="mt-1 text-xs text-muted-foreground"
-          >
-            Google Docs, Notion, GitHub, Medium, or any public page.
+          <p id="source-hint" className="mt-1 text-xs text-muted-foreground">
+            {mode === "link"
+              ? "Google Docs, Notion, GitHub, Medium, or any public page."
+              : "Copy the text out of a PDF, Word file, or notes and paste it here."}
           </p>
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-            <div className="relative flex-1">
-              <LinkIcon
-                aria-hidden
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                ref={inputRef}
-                id="source-url"
-                name="url"
-                type="url"
-                inputMode="url"
-                autoComplete="url"
-                spellCheck={false}
-                placeholder="https://docs.google.com/document/…"
-                value={url}
+          {mode === "link" ? (
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <LinkIcon
+                  aria-hidden
+                  className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  ref={inputRef}
+                  id="source-url"
+                  name="url"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  spellCheck={false}
+                  placeholder="https://docs.google.com/document/…"
+                  value={url}
+                  disabled={isGenerating}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={describedBy}
+                  onChange={(event) => {
+                    setUrl(event.target.value);
+                    if (error) setError("");
+                  }}
+                  className={`input pl-10 pr-11 ${error ? "border-error" : ""}`}
+                />
+                {url && !isGenerating && (
+                  <button
+                    type="button"
+                    aria-label="Clear the URL"
+                    onClick={() => {
+                      setUrl("");
+                      setError("");
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-[8px] text-muted-foreground transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  >
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="submit"
                 disabled={isGenerating}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={describedBy}
+                className="btn btn-primary h-[3.25rem] shrink-0 gap-2 disabled:opacity-100"
+              >
+                {isGenerating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles className="h-4 w-4" aria-hidden />
+                )}
+                {isGenerating ? "Drafting outline…" : "Draft the outline"}
+              </button>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              <input
+                id="source-title"
+                type="text"
+                value={title}
+                disabled={isGenerating}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Document title (optional)"
+                className="input"
+              />
+              <textarea
+                aria-label="Document text"
+                value={text}
+                disabled={isGenerating}
                 onChange={(event) => {
-                  setUrl(event.target.value);
+                  setText(event.target.value);
                   if (error) setError("");
                 }}
-                className={`input pl-10 pr-11 ${
-                  error ? "border-error" : ""
-                }`}
+                rows={10}
+                placeholder="Paste the document text here…"
+                aria-describedby={describedBy}
+                className={`input min-h-[220px] resize-y ${error ? "border-error" : ""}`}
               />
-              {url && !isGenerating && (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <span className="font-mono text-[11px] text-muted-foreground">
+                  {text.trim().length.toLocaleString()} characters
+                </span>
                 <button
-                  type="button"
-                  aria-label="Clear the URL"
-                  onClick={() => {
-                    setUrl("");
-                    setError("");
-                    inputRef.current?.focus();
-                  }}
-                  className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-[8px] text-muted-foreground transition-colors hover:bg-paper-2 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                  type="submit"
+                  disabled={isGenerating}
+                  className="btn btn-primary gap-2 disabled:opacity-100"
                 >
-                  <X className="h-4 w-4" aria-hidden />
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  ) : (
+                    <Sparkles className="h-4 w-4" aria-hidden />
+                  )}
+                  {isGenerating ? "Drafting outline…" : "Draft the outline"}
                 </button>
-              )}
+              </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={isGenerating}
-              className="btn btn-primary h-[3.25rem] shrink-0 gap-2 disabled:opacity-100"
-            >
-              {isGenerating ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <Sparkles className="h-4 w-4" aria-hidden />
-              )}
-              {isGenerating ? "Drafting outline…" : "Draft the outline"}
-            </button>
-          </div>
+          )}
 
           <div>
             {isGenerating && (
@@ -168,20 +272,17 @@ export default function UrlCourseGenerator({
                   className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-accent"
                   aria-hidden
                 />
-                Reading the page and drafting an outline. This can take up to
-                a minute.
+                Reading the document and drafting an outline. This can take up
+                to a minute.
               </p>
             )}
             {error && !isGenerating && (
               <p
-                id="source-url-error"
+                id="source-error"
                 role="alert"
                 className="mt-4 flex items-start gap-2 rounded-[10px] border border-error/30 bg-error/5 px-3.5 py-3 text-sm leading-relaxed text-error"
               >
-                <AlertCircle
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                  aria-hidden
-                />
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 {error}
               </p>
             )}
@@ -190,8 +291,8 @@ export default function UrlCourseGenerator({
       </form>
 
       <p className="px-1 text-xs text-muted-foreground">
-        The outline is a draft. You review and edit it before the course is
-        built.
+        The outline is a draft, already shaped by your profile context. You
+        review and edit it before the guide is built.
       </p>
     </div>
   );

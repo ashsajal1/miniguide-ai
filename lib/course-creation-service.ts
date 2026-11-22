@@ -13,6 +13,7 @@ import {
   AiScope,
   GenerationState,
   ResolvedAiContext,
+  loadLearnerProfile,
 } from "@/lib/ai-context";
 
 export interface CourseGenerationProgress {
@@ -124,6 +125,7 @@ export async function createCourseFromOutline(
       written: [],
     };
     const aiContext: ResolvedAiContext = {
+      learnerProfile: await loadLearnerProfile(),
       course: {
         title: outline.title,
         description: outline.description,
