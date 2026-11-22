@@ -2,6 +2,7 @@
 
 import { generateText } from "ai";
 import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
+import { buildLearnerPromptContext, loadLearnerProfile } from "@/lib/ai-context";
 import {
   extractContentFromUrl,
   summarizeForOutline,
@@ -93,25 +94,85 @@ export async function generateCourseOutline(url: string): Promise<CourseOutlineR
       };
     }
 
-    // Step 2: Handle large content by summarizing key sections
-    const contentForAI = await summarizeForOutline(extractedContent.text);
+    return buildOutline(
+      extractedContent.title,
+      extractedContent.text,
+      "Create a guide outline based on this content. The guide should teach the material covered in the document."
+    );
+  } catch (error) {
+    console.error("Error generating course outline:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate course outline",
+    };
+  }
+}
 
-    // Step 3: Send extracted content to AI for outline generation
-    const systemPrompt = `Analyze the following document content and create a structured course outline.
+/**
+ * Generates a guide outline from document text the learner pasted in
+ * (for PDFs or files that cannot be fetched by URL).
+ */
+export async function generateCourseOutlineFromText(
+  title: string,
+  text: string
+): Promise<CourseOutlineResponse> {
+  "use server";
+  if (!isAiConfigured()) {
+    return { success: false, error: "AI service not configured" };
+  }
+
+  const content = text.trim();
+  if (content.length < 50) {
+    return {
+      success: false,
+      error:
+        "Paste a little more text. We need at least a paragraph to build a useful guide.",
+    };
+  }
+
+  try {
+    return await buildOutline(
+      title.trim() || "Untitled document",
+      content,
+      "Create a guide outline based on this pasted content. The guide should teach the material covered in the document."
+    );
+  } catch (error) {
+    console.error("Error generating course outline from text:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to generate course outline",
+    };
+  }
+}
+
+/** Shared outline generation for URL and pasted-text sources. */
+async function buildOutline(
+  documentTitle: string,
+  documentText: string,
+  instruction: string
+): Promise<CourseOutlineResponse> {
+  const contentForAI = await summarizeForOutline(documentText);
+  const learnerContextBlock = buildLearnerPromptContext(
+    await loadLearnerProfile()
+  );
+
+  const systemPrompt = `Analyze the following document content and create a structured, personalised mini-guide outline.
 
 Requirements:
 - 3-6 modules forming a progressive learning path: each module must build on the previous one, starting from fundamentals and advancing to complex topics
 - No topic overlap between modules: split concerns cleanly so each module owns a distinct part of the subject
 - Specific, measurable learning objectives per module (2-4 each), phrased so later modules can assume earlier ones were learned
 - Realistic time estimates per module
-- Difficulty: Beginner/Intermediate/Advanced
+- Difficulty: Beginner/Intermediate/Advanced, calibrated to the learner's profile when one is provided
 - Language matches document (default: English)
 - Use the document's actual topics, terminology, and structure
 
+${learnerContextBlock}
+
 Return ONLY valid JSON (no markdown, no code blocks):
 {
-  "title": "Course title based on document content",
-  "description": "2-3 sentence description of what this course covers",
+  "title": "Guide title based on document content",
+  "description": "2-3 sentence description of what this guide covers",
   "difficulty": "Beginner|Intermediate|Advanced",
   "language": "en",
   "estimatedDuration": "X hours",
@@ -126,71 +187,59 @@ Return ONLY valid JSON (no markdown, no code blocks):
   ]
 }`;
 
-    const userPrompt = `Document title: ${extractedContent.title}
+  const userPrompt = `Document title: ${documentTitle}
 
 Document content:
 ${contentForAI}
 
-Create a course outline based on this content. The course should teach the material covered in the document.`;
+${instruction}`;
 
-    const { text: aiContent } = await generateText({
-      model: aiProvider.chatModel(getModel()),
-      system: systemPrompt,
-      prompt: userPrompt,
-      temperature: 0.7,
-      maxOutputTokens: 4096,
-    });
+  const { text: aiContent } = await generateText({
+    model: aiProvider.chatModel(getModel()),
+    system: systemPrompt,
+    prompt: userPrompt,
+    temperature: 0.7,
+    maxOutputTokens: 4096,
+  });
 
-    if (!aiContent) {
-      return {
-        success: false,
-        error: "No content generated from AI",
-      };
-    }
-
-    // Parse the JSON response
-    let outlineData: CourseOutline;
-    try {
-      // Remove any potential markdown code block wrappers
-      const cleanedContent = aiContent
-        .replace(/^```(?:json)?\n?/gm, "")
-        .replace(/```$/gm, "")
-        .trim();
-      outlineData = JSON.parse(cleanedContent);
-    } catch (parseError) {
-      console.error("Failed to parse outline JSON:", parseError);
-      console.error("Raw content:", aiContent);
-      return {
-        success: false,
-        error: "Failed to parse generated outline. Please try again.",
-      };
-    }
-
-    // Validate the response structure
-    if (!outlineData.title || !outlineData.modules || outlineData.modules.length === 0) {
-      return {
-        success: false,
-        error: "Invalid outline structure generated",
-      };
-    }
-
-    // Ensure modules have proper order
-    outlineData.modules.forEach((module, index) => {
-      module.order = index + 1;
-    });
-
-    return {
-      success: true,
-      outline: outlineData,
-    };
-
-  } catch (error) {
-    console.error("Error generating course outline:", error);
+  if (!aiContent) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to generate course outline",
+      error: "No content generated from AI",
     };
   }
+
+  let outlineData: CourseOutline;
+  try {
+    const cleanedContent = aiContent
+      .replace(/^```(?:json)?\n?/gm, "")
+      .replace(/```$/gm, "")
+      .trim();
+    outlineData = JSON.parse(cleanedContent);
+  } catch (parseError) {
+    console.error("Failed to parse outline JSON:", parseError);
+    console.error("Raw content:", aiContent);
+    return {
+      success: false,
+      error: "Failed to parse generated outline. Please try again.",
+    };
+  }
+
+  if (!outlineData.title || !outlineData.modules || outlineData.modules.length === 0) {
+    return {
+      success: false,
+      error: "Invalid outline structure generated",
+    };
+  }
+
+  outlineData.modules.forEach((module, index) => {
+    module.order = index + 1;
+  });
+
+  return {
+    success: true,
+    outline: outlineData,
+  };
 }
 
 /**

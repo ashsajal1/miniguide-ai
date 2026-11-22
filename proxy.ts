@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest } from "next/server";
 
 const isPublicRoute = createRouteMatcher([
   "/",
@@ -31,13 +31,6 @@ const authenticate = clerkMiddleware(async (auth, req) => {
 });
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {
-  // Home renders public data and resolves navbar auth in the client. Avoid
-  // Clerk's session-refresh handshake on document and RSC reads, but keep
-  // middleware available to authenticated server actions (POST) on this page.
-  if (req.nextUrl.pathname === "/" && (req.method === "GET" || req.method === "HEAD")) {
-    return NextResponse.next();
-  }
-
   return authenticate(req, event);
 }
 

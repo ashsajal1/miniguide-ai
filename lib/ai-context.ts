@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/client";
 
 /**
@@ -53,11 +54,20 @@ export interface AiScope {
  * Resolves the effective context for a generation call: a pre-built context
  * wins, otherwise ids are loaded from the database.
  */
-export async function resolveAiContext(scope?: AiScope): Promise<ResolvedAiContext | null> {
-  if (!scope) return null;
-  if (scope.context) return scope.context;
-  if (!scope.courseId && !scope.moduleId) return null;
-  return loadAiContext(scope);
+export async function resolveAiContext(
+  scope?: AiScope
+): Promise<ResolvedAiContext | null> {
+  let context: ResolvedAiContext | null = null;
+  if (scope?.context) {
+    context = scope.context;
+  } else if (scope?.courseId || scope?.moduleId) {
+    context = await loadAiContext(scope);
+  }
+
+  // The guide is personal: every generation call carries the learner profile.
+  context ??= {};
+  context.learnerProfile ??= await loadLearnerProfile();
+  return context;
 }
 
 export interface ResolvedAiContext {
@@ -66,6 +76,44 @@ export interface ResolvedAiContext {
   state?: GenerationState;
   /** Last slide already in the module (used when no slide content is given). */
   previousSlideContent?: string | null;
+  /** Free-form learner profile used to personalise the guide. */
+  learnerProfile?: string | null;
+}
+
+const MAX_PROFILE_CHARS = 2000;
+
+/** Loads the signed-in learner's profile context, or "" when there is none. */
+export async function loadLearnerProfile(): Promise<string> {
+  try {
+    const { userId } = await auth();
+    if (!userId) return "";
+    const user = await prisma.user.findUnique({
+      where: { clerk_id: userId },
+      select: { profile_context: true },
+    });
+    return user?.profile_context?.trim().slice(0, MAX_PROFILE_CHARS) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Prompt block for personalisation. The profile is optional context, not a
+ * checklist: content must stay accurate to the source and only use the
+ * profile where it genuinely helps.
+ */
+export function buildLearnerPromptContext(profile?: string | null): string {
+  const clean = profile?.trim();
+  if (!clean) return "";
+
+  return `LEARNER PROFILE (the learner chose to share this)
+${clean}
+
+PERSONALISATION RULES:
+- Use the profile to pick examples, analogies, framing and difficulty that fit this learner.
+- Refer to the learner's own details only when they genuinely help explain the material. Never force a mention, and never pad the content with their profile.
+- The profile never overrides the source: do not invent facts, statistics, quotes or claims, and do not let personal details contradict the document.
+- Never quote the profile back verbatim or present it as personal data.`;
 }
 
 const MAX_STATE_ITEMS = 60;
@@ -223,6 +271,7 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
     module: moduleContext,
     state,
     previousSlideContent,
+    learnerProfile: await loadLearnerProfile(),
   };
 }
 

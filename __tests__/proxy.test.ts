@@ -31,24 +31,25 @@ beforeEach(() => {
 });
 
 describe("home page authentication", () => {
-  it.each(["GET", "HEAD"])("serves %s without invoking Clerk even with a stale session", async (method) => {
+  it.each(["GET", "HEAD"])("provides Clerk context for home %s without protecting", async (method) => {
     const response = await proxy(new NextRequest("https://example.com/", {
       method,
       headers: { cookie: "__session=expired", accept: "text/html" },
     }), event);
     expect(response?.status).toBe(200);
     expect(response?.headers.get("location")).toBeNull();
-    expect(authenticate).not.toHaveBeenCalled();
+    expect(authenticate).toHaveBeenCalledOnce();
+    expect(protect).not.toHaveBeenCalled();
   });
 
-  it("bypasses Clerk for home RSC navigation", async () => {
+  it("provides Clerk context for home RSC navigation", async () => {
     await proxy(new NextRequest("https://example.com/?_rsc=test", {
       headers: { RSC: "1" },
     }), event);
-    expect(authenticate).not.toHaveBeenCalled();
+    expect(authenticate).toHaveBeenCalledOnce();
   });
 
-  it("retains Clerk context for home server actions", async () => {
+  it("provides Clerk context for home server actions", async () => {
     await proxy(new NextRequest("https://example.com/", { method: "POST" }), event);
     expect(authenticate).toHaveBeenCalledOnce();
   });
