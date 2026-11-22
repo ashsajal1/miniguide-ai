@@ -6,6 +6,7 @@ import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 import {
   AiScope,
   buildCoursePromptContext,
+  buildLearnerPromptContext,
   buildStatePromptContext,
   resolveAiContext,
 } from "@/lib/ai-context";
@@ -56,10 +57,13 @@ export async function generateWrittenTask(
       context?.module
     );
     const stateContextBlock = buildStatePromptContext(context?.state);
+    const learnerContextBlock = buildLearnerPromptContext(context?.learnerProfile);
 
     const systemPrompt = `You design one short written practice task for a module in a guided course.
 
 ${courseContextBlock}
+
+${learnerContextBlock}
 
 TASK REQUIREMENTS:
 - Write one scenario or task that a learner can answer in 3-6 sentences.

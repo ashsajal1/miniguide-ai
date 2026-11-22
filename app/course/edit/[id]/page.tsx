@@ -1,4 +1,5 @@
 import prisma from "@/prisma/client";
+import { auth } from "@clerk/nextjs/server";
 import Modules from "./modules";
 import CourseStatusToggle from "./course-status-toggle";
 import Link from "next/link";
@@ -18,6 +19,7 @@ export default async function ManageCourse({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const { userId } = await auth();
   const course = await prisma.course.findUnique({
     where: {
       id: id,
@@ -64,16 +66,16 @@ export default async function ManageCourse({
     },
   });
 
-  if (!course) {
+  if (!course || course.creator !== userId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted">
         <div className="text-center">
           <div className="w-20 h-20 rounded-full bg-error/10 flex items-center justify-center mx-auto mb-4">
             <BookOpen className="w-10 h-10 text-error" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Course Not Found</h1>
+          <h1 className="text-3xl font-bold mb-2">Guide Not Found</h1>
           <p className="text-muted-foreground mb-6">
-            This course doesn&apos;t exist or has been deleted.
+            This guide doesn&apos;t exist, or it isn&apos;t yours.
           </p>
           <Link href="/" className="btn btn-primary">
             <ArrowLeft className="w-4 h-4" />

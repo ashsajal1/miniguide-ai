@@ -5,6 +5,7 @@ import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 import {
   AiScope,
   buildCoursePromptContext,
+  buildLearnerPromptContext,
   buildStatePromptContext,
   resolveAiContext,
 } from "@/lib/ai-context";
@@ -40,10 +41,13 @@ export async function generateSlideContent(
       context?.module
     );
     const stateContextBlock = buildStatePromptContext(context?.state);
+    const learnerContextBlock = buildLearnerPromptContext(context?.learnerProfile);
 
     const systemPrompt = `You write slide cards for a short guided course. A card teaches exactly one thing and reads in under a minute.
 
 ${courseContextBlock}
+
+${learnerContextBlock}
 
 CARD BRIEF:
 - Body copy: 40-80 words. One idea, one example, or one distinction per card. Never bundle several points into one card.

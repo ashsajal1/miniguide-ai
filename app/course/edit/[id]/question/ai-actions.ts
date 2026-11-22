@@ -5,6 +5,7 @@ import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
 import {
   AiScope,
   buildCoursePromptContext,
+  buildLearnerPromptContext,
   buildStatePromptContext,
   resolveAiContext,
 } from "@/lib/ai-context";
@@ -53,10 +54,13 @@ export async function generateMCQFromSlide(
       context?.module
     );
     const stateContextBlock = buildStatePromptContext(context?.state);
+    const learnerContextBlock = buildLearnerPromptContext(context?.learnerProfile);
 
     const systemPrompt = `You are an expert educational assessment designer. Create high-quality multiple choice questions that effectively test learning and understanding.
 
 ${courseContextBlock}
+
+${learnerContextBlock}
 
 CONSISTENCY RULES (this question belongs to a guided course):
 - Test only material from the current module's slide content below; do not ask about content the roadmap assigns to a later module.
