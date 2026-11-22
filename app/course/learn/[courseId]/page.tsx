@@ -1,6 +1,7 @@
 import prisma from "@/prisma/client";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import {
   CheckCircle,
@@ -21,13 +22,14 @@ export async function generateMetadata({
   params: Promise<{ courseId: string }>;
 }): Promise<Metadata> {
   const { courseId } = await params;
+  const { userId } = await auth();
   const course = await prisma.course.findUnique({
     where: { id: courseId },
-    select: { name: true },
+    select: { name: true, creator: true },
   });
 
-  if (!course) {
-    return { title: "Course Not Found" };
+  if (!course || course.creator !== userId) {
+    return { title: "Guide Not Found" };
   }
 
   return {
@@ -43,6 +45,15 @@ export default async function page({
 }) {
   const { courseId } = await params;
   const { userId: clerkId } = await auth();
+
+  // Guides are private: only the creator can learn from one.
+  const courseOwner = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { creator: true },
+  });
+  if (!courseOwner || courseOwner.creator !== clerkId) {
+    notFound();
+  }
 
   const courseModules = await prisma.module.findMany({
     where: {

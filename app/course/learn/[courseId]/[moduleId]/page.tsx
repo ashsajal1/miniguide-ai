@@ -6,6 +6,7 @@ import LearnModuleView from "./learn-module-view";
 import { getUserModuleProgress } from "./actions";
 import { markCourseAsCompleted } from "@/lib/enrollment-service";
 import { auth } from "@clerk/nextjs/server";
+import { notFound } from "next/navigation";
 
 export async function generateMetadata({
   params,
@@ -14,10 +15,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { courseId, moduleId } = await params;
 
+  const { userId } = await auth();
   const [course, module] = await Promise.all([
     prisma.course.findUnique({
       where: { id: courseId },
-      select: { name: true },
+      select: { name: true, creator: true },
     }),
     prisma.module.findUnique({
       where: { id: moduleId },
@@ -25,7 +27,7 @@ export async function generateMetadata({
     }),
   ]);
 
-  if (!course || !module) {
+  if (!course || course.creator !== userId || !module) {
     return {
       title: "Module Not Found",
     };
@@ -67,6 +69,16 @@ export default async function Page({
   const { moduleId, courseId } = await params;
 
   const { userId } = await auth();
+
+  // Guides are private: only the creator can open their modules.
+  const courseOwner = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { creator: true },
+  });
+  if (!courseOwner || courseOwner.creator !== userId) {
+    notFound();
+  }
+
   const viewer = userId
     ? await prisma.user.findUnique({
         where: { clerk_id: userId },
