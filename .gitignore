@@ -58,3 +58,4 @@ deno.lock
 /dist/
 .vinext/
 .cloudflare/
+.dev.vars*

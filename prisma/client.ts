@@ -1,5 +1,7 @@
 import "dotenv/config";
-import { PrismaClient } from '@/generated/prisma';
+// The `/edge` entry imports Prisma's query-compiler wasm as a module. Workers
+// can't compile wasm at runtime, which is what the default entry does.
+import { PrismaClient } from '@/generated/prisma/edge';
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import dns from "node:dns";

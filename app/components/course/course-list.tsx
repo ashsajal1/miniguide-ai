@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Filter, X } from "lucide-react";
-import { Course, Category } from "@/generated/prisma";
+import type { Course, Category } from "@/generated/prisma";
 import CourseCard from "@/app/components/course/course-card";
 
 type CourseWithCount = Course & {
