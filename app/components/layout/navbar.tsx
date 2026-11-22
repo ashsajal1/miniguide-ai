@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 const navItems = [
   { name: "Home", href: "/" },
-  { name: "Courses", href: "/course" },
+  { name: "My guides", href: "/course" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
 ];
@@ -106,12 +106,12 @@ export default function Navbar() {
             <Link
               href="/course/create"
               prefetch={false}
-              aria-label="Create course"
-              title="Create course"
+              aria-label="New guide"
+              title="New guide"
               className="btn btn-primary btn-sm h-9 w-9 shrink-0 px-0 lg:w-auto lg:px-[0.85rem]"
             >
               <Plus className="h-4 w-4" aria-hidden />
-              <span className="hidden lg:inline">Create course</span>
+              <span className="hidden lg:inline">New guide</span>
             </Link>
             <SignedOut>
               <SignInButton>
@@ -223,7 +223,7 @@ export default function Navbar() {
                 className="btn btn-primary w-full gap-1.5"
               >
                 <Plus className="h-4 w-4" aria-hidden />
-                Create course
+                New guide
               </Link>
               <SignedOut>
                 <SignInButton>

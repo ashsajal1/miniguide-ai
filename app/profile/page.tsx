@@ -16,6 +16,7 @@ import { CreatedCoursesSection } from "../components/profile/created-courses-sec
 import { LogoutButton } from "../components/auth/logout-button";
 import { getEnrolledCourses } from "@/lib/enrollment-service";
 import { SavedCoursesSection } from "../components/profile/saved-courses-section";
+import { ProfileContextForm } from "../components/profile/profile-context-form";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -180,6 +181,8 @@ export default async function ProfilePage() {
             </div>
           </div>
         </div>
+
+        <ProfileContextForm initialValue={dbUser.profile_context ?? ""} />
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

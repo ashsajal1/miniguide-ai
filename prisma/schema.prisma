@@ -195,6 +195,10 @@ model User {
   level    UserLevel @default(BEGINNER)
   xp       Int       @default(0)
 
+  // Free-form learner context (background, interests, what they already know).
+  // Used only to personalise generated guides; never shown to anyone else.
+  profile_context String?
+
   modules_progress    UserModuleProgress[]
   enrollments         Enrollment[]
   ratings             Rating[]
