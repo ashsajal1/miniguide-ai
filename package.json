@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "",
     "dev": "bun next dev",
-    "build": "prisma migrate deploy && bun next build",
+    "build": "prisma generate && bun next build",
     "start": "bun next start",
     "lint": "bun eslint",
     "test": "bun vitest",
