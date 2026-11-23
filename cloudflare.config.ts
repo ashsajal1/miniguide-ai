@@ -20,7 +20,6 @@ export default defineConfig({
       AI_PROVIDER_NAME: bindings.secret(),
       AI_BASE_URL: bindings.secret(),
       AI_API_KEY: bindings.secret(),
-      GROQ_API_KEY: bindings.secret(),
       AI_MODEL: bindings.secret(),
       AI_URL_MODEL: bindings.secret(),
       // Clerk
