@@ -27,7 +27,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@opennextjs/aws": "4.2.0",
-    "@opennextjs/cloudflare": "^1.20.18",
+    "@opennextjs/cloudflare": "1.20.17",
     "@prisma/adapter-neon": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@prisma/client-runtime-utils": "^7.9.1",
