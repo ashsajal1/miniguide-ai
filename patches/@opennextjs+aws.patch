@@ -1,0 +1,18 @@
+diff --git a/dist/overrides/converters/edge.js b/dist/overrides/converters/edge.js
+index 1234567..abcdefg 100644
+--- a/dist/overrides/converters/edge.js
++++ b/dist/overrides/converters/edge.js
+@@ -1,4 +1,4 @@
+ import { Buffer } from "node:buffer";
+-import cookieParser from "cookie";
++import { parse as parseCookie } from "cookie";
+ import { parseSetCookieHeader } from "../../http/util.js";
+ import { getQueryFromSearchParams } from "./utils.js";
+@@ -21,7 +21,7 @@ const converter = {
+         const cookieHeader = event.headers.get("cookie");
+         const cookies = cookieHeader
+-            ? cookieParser.parse(cookieHeader)
++            ? parseCookie(cookieHeader)
+             : {};
+         return {
+             type: "core",
