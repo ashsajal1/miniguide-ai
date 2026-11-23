@@ -12,7 +12,7 @@ export default async function Page() {
 
   return (
     <AuthLayout>
-      <SignUp />
+      <SignUp routing="path" path="/sign-up" />
     </AuthLayout>
   );
 }

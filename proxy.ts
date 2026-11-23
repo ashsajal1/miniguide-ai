@@ -13,13 +13,13 @@ const isPublicRoute = createRouteMatcher([
   "/cookies",
   "/sign-in(.*)",
   "/sign-up(.*)",
-  "/course",
   "/course/:id",
   "/course/learn(.*)",
   "/api/webhooks(.*)",
 ]);
 
 const isProtectedRoute = createRouteMatcher([
+  "/course",
   "/course/create(.*)",
   "/course/edit(.*)",
 ]);
@@ -28,6 +28,10 @@ const authenticate = clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req) || !isPublicRoute(req)) {
     await auth.protect();
   }
+}, {
+  // Configure sign-in/up URLs to avoid internal Clerk redirect issues
+  signInUrl: "/sign-in",
+  signUpUrl: "/sign-up",
 });
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {

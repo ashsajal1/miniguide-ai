@@ -56,13 +56,13 @@ describe("home page authentication", () => {
 });
 
 describe("route protection", () => {
-  it.each(["/course/create", "/course/create/url", "/course/create/manual", "/course/edit/123", "/profile", "/saved", "/admin", "/api/private"])("protects %s exactly once", async (path) => {
+  it.each(["/course", "/course/create", "/course/create/url", "/course/create/manual", "/course/edit/123", "/profile", "/saved", "/admin", "/api/private"])("protects %s exactly once", async (path) => {
     await proxy(new NextRequest(`https://example.com${path}`), event);
     expect(authenticate).toHaveBeenCalledOnce();
     expect(protect).toHaveBeenCalledOnce();
   });
 
-  it.each(["/course", "/course/123", "/course/learn/123", "/sign-in", "/sign-up", "/blog", "/blog/how-to-use-minicourse", "/faq", "/support", "/privacy", "/terms", "/cookies", "/api/webhooks/clerk"])("keeps %s public with Clerk context", async (path) => {
+  it.each(["/course/123", "/course/learn/123", "/sign-in", "/sign-up", "/blog", "/blog/how-to-use-minicourse", "/faq", "/support", "/privacy", "/terms", "/cookies", "/api/webhooks/clerk"])("keeps %s public with Clerk context", async (path) => {
     await proxy(new NextRequest(`https://example.com${path}`), event);
     expect(authenticate).toHaveBeenCalledOnce();
     expect(protect).not.toHaveBeenCalled();
