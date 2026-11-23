@@ -1,15 +1,15 @@
 {
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "miniguide-ai",
-  "main": "vinext/server/fetch-handler",
+  "main": ".open-next/worker.js",
   "compatibility_date": "2026-11-20",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": {
-    "directory": ".cloudflare/output/v1/workers/default/assets",
-    "html_handling": "none",
-    "not_found_handling": "none",
-    "run_worker_first": ["/*", "!/_next/static/*", "!/*/_next/static/*"]
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
   },
-  "env": {
-    "ASSETS": { "type": "assets" }
+  "images": {
+    "binding": "IMAGES"
   },
   "vars": {
     "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsuYWkuc2FqYWxsYWJzLmNvbSQ"
