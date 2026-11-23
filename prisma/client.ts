@@ -1,7 +1,8 @@
-import "dotenv/config";
-// The `/edge` entry imports Prisma's query-compiler wasm as a module. Workers
-// can't compile wasm at runtime, which is what the default entry does.
-import { PrismaClient } from '@/generated/prisma/edge';
+// Node loads the default client entry: it compiles Prisma's query-compiler wasm
+// from base64 at runtime. workerd (Cloudflare Workers) forbids runtime wasm
+// compilation, so there the `/edge` entry is used, which imports it as a module.
+import * as nodeClient from '@/generated/prisma';
+import * as edgeClient from '@/generated/prisma/edge';
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import dns from "node:dns";
@@ -22,20 +23,19 @@ class IPv4WebSocket extends ws {
 }
 
 // Node-only: this dev machine has no working IPv6 route to Neon, so force the
-// WebSocket connection over IPv4. In Workers `ws` has no TCP socket and falls
-// back to a fetch WebSocket upgrade, whose 101 breaks new Response(); native
-// WebSocket handles the connection there.
+// WebSocket connection over IPv4. Workers use the native WebSocket — `ws` has
+// no TCP socket there and its fetch upgrade breaks.
 if (!isWorkerRuntime) {
   dns.setDefaultResultOrder("ipv4first");
   neonConfig.webSocketConstructor = IPv4WebSocket as never;
 }
 
-// Polyfill global for environments where it's not defined
-const g = globalThis as unknown as { prisma?: PrismaClient };
+const { PrismaClient } = isWorkerRuntime ? edgeClient : nodeClient;
 
-const connectionString = `${process.env.DATABASE_URL}`;
+// Reuse the client across dev hot reloads; env is loaded by Next itself.
+const g = globalThis as unknown as { prisma?: InstanceType<typeof PrismaClient> };
 
-const adapter = new PrismaNeon({ connectionString });
+const adapter = new PrismaNeon({ connectionString: `${process.env.DATABASE_URL}` });
 const prisma = g.prisma || new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV === "development") g.prisma = prisma;
