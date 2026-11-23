@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@prisma/client";
 import { Check, Edit, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import InlineMarkdown from "./inline-markdown";

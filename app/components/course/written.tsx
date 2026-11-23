@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@prisma/client";
 import { Check, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import {
   submitWrittenResponse,

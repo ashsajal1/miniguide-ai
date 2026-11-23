@@ -1,8 +1,4 @@
-// Node loads the default client entry: it compiles Prisma's query-compiler wasm
-// from base64 at runtime. workerd (Cloudflare Workers) forbids runtime wasm
-// compilation, so there the `/edge` entry is used, which imports it as a module.
-import * as nodeClient from '@/generated/prisma';
-import * as edgeClient from '@/generated/prisma/edge';
+import { PrismaClient } from "@prisma/client";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { neonConfig } from "@neondatabase/serverless";
 import dns from "node:dns";
@@ -30,10 +26,8 @@ if (!isWorkerRuntime) {
   neonConfig.webSocketConstructor = IPv4WebSocket as never;
 }
 
-const { PrismaClient } = isWorkerRuntime ? edgeClient : nodeClient;
-
 // Reuse the client across dev hot reloads; env is loaded by Next itself.
-const g = globalThis as unknown as { prisma?: InstanceType<typeof PrismaClient> };
+const g = globalThis as unknown as { prisma?: PrismaClient };
 
 const adapter = new PrismaNeon({ connectionString: `${process.env.DATABASE_URL}` });
 const prisma = g.prisma || new PrismaClient({ adapter });

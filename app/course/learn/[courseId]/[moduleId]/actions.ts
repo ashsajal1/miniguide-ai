@@ -2,7 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import prisma from "@/prisma/client";
-import { ContentType, UserLevel } from "@/generated/prisma";
+import { ContentType, UserLevel } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { isAiConfigured } from "@/lib/ai";
 import { analyzeWrittenAnswer, WrittenVerdict } from "@/lib/written-ai";

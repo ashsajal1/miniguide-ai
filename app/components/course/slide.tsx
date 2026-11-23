@@ -13,7 +13,7 @@ import type { Components } from "react-markdown";
 import "highlight.js/styles/github-dark.css";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import type { Prisma } from "@/generated/prisma";
+import type { Prisma } from "@prisma/client";
 import { BookOpen, Check, Copy, Edit } from "lucide-react";
 import Link from "next/link";
 

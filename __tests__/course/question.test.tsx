@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Question from "@/app/components/course/question";
-import { Prisma } from "@/generated/prisma";
+import { Prisma } from "@prisma/client";
 
 type QuestionWithOptions = Prisma.QuestionGetPayload<{
   include: {

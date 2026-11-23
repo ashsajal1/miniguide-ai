@@ -10,7 +10,7 @@ import {
   Pencil,
   PenLine,
 } from "lucide-react";
-import type { Module } from "@/generated/prisma";
+import type { Module } from "@prisma/client";
 import {
   deleteModule,
   deleteSlide,
