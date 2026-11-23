@@ -8,9 +8,8 @@ import dns from "node:dns";
 
 import ws from "ws";
 
-// This dev machine has no working IPv6 route to Neon; force the WebSocket
-// connection to resolve over IPv4 so it doesn't time out on IPv6 first.
-dns.setDefaultResultOrder("ipv4first");
+const isWorkerRuntime =
+  typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 
 class IPv4WebSocket extends ws {
   constructor(url: string, protocols?: string | string[], options?: ws.ClientOptions) {
@@ -22,10 +21,14 @@ class IPv4WebSocket extends ws {
   }
 }
 
-neonConfig.webSocketConstructor = IPv4WebSocket as never;
-
-// To work in edge environments (Cloudflare Workers, Vercel Edge, etc.), enable querying over fetch
-// neonConfig.poolQueryViaFetch = true
+// Node-only: this dev machine has no working IPv6 route to Neon, so force the
+// WebSocket connection over IPv4. In Workers `ws` has no TCP socket and falls
+// back to a fetch WebSocket upgrade, whose 101 breaks new Response(); native
+// WebSocket handles the connection there.
+if (!isWorkerRuntime) {
+  dns.setDefaultResultOrder("ipv4first");
+  neonConfig.webSocketConstructor = IPv4WebSocket as never;
+}
 
 // Polyfill global for environments where it's not defined
 const g = globalThis as unknown as { prisma?: PrismaClient };
