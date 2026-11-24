@@ -8,6 +8,9 @@ import ws from "ws";
 const isWorkerRuntime =
   typeof navigator !== "undefined" && navigator.userAgent === "Cloudflare-Workers";
 
+// Use request-scoped HTTP queries instead of reusing WebSocket I/O across Worker requests.
+if (isWorkerRuntime) neonConfig.poolQueryViaFetch = true;
+
 class IPv4WebSocket extends ws {
   constructor(url: string, protocols?: string | string[], options?: ws.ClientOptions) {
     super(url, protocols as never, {
