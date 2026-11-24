@@ -200,7 +200,7 @@ export default function AboutPage() {
               <h2 className="text-xl text-foreground">Our mission</h2>
             </div>
             <p className="mt-4 max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
-              To democratize education by making high-quality learning resources accessible to people from all walks of life, regardless of their location or financial status.
+              To democratize education by making high-quality learning resources accessible to people from all walks of life, regardless of their financial status.
             </p>
           </div>
           <div className="plastic plastic--thu p-6 sm:p-8">

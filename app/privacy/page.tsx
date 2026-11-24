@@ -49,7 +49,7 @@ const sections: { title: string; body: string[] }[] = [
   {
     title: "6. Your Rights",
     body: [
-      "Depending on your location, you may have the right to access, correct, export, or delete the personal data we hold about you.",
+      "You may have the right to access, correct, export, or delete the personal data we hold about you.",
       "To exercise any of these rights, reach out through our contact page.",
     ],
   },

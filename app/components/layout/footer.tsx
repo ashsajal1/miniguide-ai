@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Mail, MapPin, Phone, Twitter, Linkedin, Facebook, Instagram, Youtube } from 'lucide-react';
+import { Phone } from 'lucide-react';
 
 interface FooterLink {
   name: string;
@@ -30,36 +30,19 @@ const footerLinks: FooterSection[] = [
       { name: 'FAQ', href: '/faq' },
       { name: 'Support', href: '/support' },
       { name: 'Privacy', href: '/privacy' },
+      { name: 'Terms of Service', href: '/terms' },
     ],
   },
   {
     title: 'Contact',
     links: [
       {
-        name: 'support@minicourse.com',
-        href: 'mailto:support@minicourse.com',
-        icon: <Mail className="w-3.5 h-3.5" aria-hidden />,
-      },
-      {
         name: '+1 (555) 123-4567',
         href: 'tel:+15551234567',
         icon: <Phone className="w-3.5 h-3.5" aria-hidden />,
       },
-      {
-        name: 'San Francisco, CA',
-        href: 'https://maps.google.com',
-        icon: <MapPin className="w-3.5 h-3.5" aria-hidden />,
-      },
     ],
   },
-];
-
-const socialLinks = [
-  { name: 'Twitter', icon: <Twitter className="w-4 h-4" aria-hidden />, href: '#' },
-  { name: 'LinkedIn', icon: <Linkedin className="w-4 h-4" aria-hidden />, href: '#' },
-  { name: 'Facebook', icon: <Facebook className="w-4 h-4" aria-hidden />, href: '#' },
-  { name: 'Instagram', icon: <Instagram className="w-4 h-4" aria-hidden />, href: '#' },
-  { name: 'YouTube', icon: <Youtube className="w-4 h-4" aria-hidden />, href: '#' },
 ];
 
 export default function Footer() {
@@ -78,18 +61,6 @@ export default function Footer() {
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-muted-foreground">
               A short-course platform for bite-size learning. Build skills at your own pace: mobile friendly, self-paced, and free to start.
             </p>
-            <div className="mt-6 flex gap-2">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.name}
-                  href={social.href}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-rule bg-card text-muted-foreground transition-colors hover:border-accent hover:text-accent"
-                  aria-label={social.name}
-                >
-                  {social.icon}
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Sections */}
@@ -116,7 +87,7 @@ export default function Footer() {
 
         <div className="mt-12 border-t border-rule pt-6 flex flex-col md:flex-row gap-4 justify-between items-center">
           <p className="text-xs text-muted-foreground">
-            © {currentYear} MiniGuide AI, San Francisco
+            © {currentYear} MiniGuide AI
           </p>
           <nav className="flex flex-wrap gap-1">
             {[

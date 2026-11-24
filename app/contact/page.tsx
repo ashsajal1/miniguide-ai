@@ -218,19 +218,6 @@ export default function ContactPage() {
                   <p className="text-[12px] text-ink-2">Mon-Fri, 9:00-18:00 EST</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 pt-4">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" aria-hidden />
-                <div>
-                  <h3 className="font-sans text-sm font-medium text-foreground">Visit</h3>
-                  <p className="mt-1 text-[12px] leading-relaxed text-ink-2">
-                    123 Learning Street
-                    <br />
-                    San Francisco, CA 94107
-                    <br />
-                    United States
-                  </p>
-                </div>
-              </div>
             </div>
 
             <div>
@@ -264,7 +251,6 @@ export default function ContactPage() {
           <div className="flex aspect-[16/7] items-center justify-center rounded-[10px] bg-paper-2">
             <div className="text-center text-muted-foreground">
               <MapPin className="mx-auto mb-3 h-8 w-8" aria-hidden />
-              <p className="text-xs">123 Learning Street, San Francisco</p>
               <p className="mt-1 text-xs">Map integration comes with production</p>
             </div>
           </div>
