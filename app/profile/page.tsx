@@ -1,5 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import db from "@/db/client";
+import { course as courseTable, user as userTable } from "@/db/schema";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,34 +32,15 @@ export default async function ProfilePage() {
     redirect("/sign-in");
   }
 
-  // Fetch or create Prisma user
-  let dbUser = await prisma.user.findUnique({
-    where: { clerk_id: user.id },
-    include: {
-      modules_progress: {
-        include: {
-          module: {
-            include: {
-              course: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  if (!dbUser) {
-    dbUser = await prisma.user.create({
-      data: {
-        clerk_id: user.id,
-        level: "BEGINNER",
-        xp: 0,
-      },
-      include: {
+  // Fetch or create the DB user
+  const userWithProgress = () =>
+    db.query.user.findFirst({
+      where: eq(userTable.clerk_id, user.id),
+      with: {
         modules_progress: {
-          include: {
+          with: {
             module: {
-              include: {
+              with: {
                 course: true,
               },
             },
@@ -65,6 +48,19 @@ export default async function ProfilePage() {
         },
       },
     });
+
+  let dbUser = await userWithProgress();
+
+  if (!dbUser) {
+    await db
+      .insert(userTable)
+      .values({ clerk_id: user.id, level: "BEGINNER", xp: 0 })
+      .onConflictDoNothing({ target: userTable.clerk_id });
+    dbUser = await userWithProgress();
+  }
+
+  if (!dbUser) {
+    redirect("/sign-in");
   }
 
   // Calculate course progress
@@ -83,19 +79,9 @@ export default async function ProfilePage() {
   );
 
   // Fetch total module counts for these courses
-  const coursesWithCounts = await prisma.course.findMany({
-    where: {
-      id: {
-        in: Array.from(courseIds),
-      },
-    },
-    include: {
-      _count: {
-        select: {
-          modules: true,
-        },
-      },
-    },
+  const coursesWithCounts = await db.query.course.findMany({
+    where: inArray(courseTable.id, Array.from(courseIds)),
+    with: { modules: { columns: { id: true } } },
   });
 
   // Initialize map with course info and total counts
@@ -103,7 +89,7 @@ export default async function ProfilePage() {
     courseProgress.set(c.id, {
       course: c,
       completedModules: 0,
-      totalModules: c._count.modules,
+      totalModules: c.modules.length,
     });
   });
 
@@ -121,23 +107,19 @@ export default async function ProfilePage() {
   const enrolledCourses = await getEnrolledCourses();
 
   // Fetch last 10 courses created by the user
-  const createdCourses = await prisma.course.findMany({
-    where: {
-      creator: user.id,
-      deleted_at: null,
-    },
-    orderBy: {
-      created_at: "desc",
-    },
-    take: 10,
-    include: {
-      _count: {
-        select: {
-          modules: true,
-        },
-      },
-    },
+  const createdRows = await db.query.course.findMany({
+    where: and(
+      eq(courseTable.creator, user.id),
+      isNull(courseTable.deleted_at),
+    ),
+    orderBy: desc(courseTable.created_at),
+    limit: 10,
+    with: { modules: { columns: { id: true } } },
   });
+  const createdCourses = createdRows.map((course) => ({
+    ...course,
+    _count: { modules: course.modules.length },
+  }));
 
   // Check admin status
   const isAdmin = dbUser.role === "ADMIN";

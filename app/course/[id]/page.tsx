@@ -12,7 +12,9 @@ import {
   Pencil,
   Users,
 } from "lucide-react";
-import prisma from "@/prisma/client";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import db from "@/db/client";
+import { course as courseTable, module as moduleTable } from "@/db/schema";
 import {
   getCourseEnrollmentCount,
   isEnrolledInCourse,
@@ -37,9 +39,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const { userId } = await auth();
-  const course = await prisma.course.findUnique({
-    where: { id },
-    select: { name: true, description: true, thumbnail_url: true, creator: true },
+  const course = await db.query.course.findFirst({
+    where: eq(courseTable.id, id),
+    columns: {
+      name: true,
+      description: true,
+      thumbnail_url: true,
+      creator: true,
+    },
   });
 
   if (!course || course.creator !== userId) {
@@ -71,17 +78,17 @@ export default async function CoursePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const course = await prisma.course.findFirst({
-    where: {
-      id,
-    },
-    include: {
+  const course = await db.query.course.findFirst({
+    where: eq(courseTable.id, id),
+    with: {
       category: true,
       modules: {
-        where: { deleted_at: null },
-        orderBy: [{ order: "asc" }, { created_at: "asc" }],
-        include: {
-          _count: { select: { slides: true, questions: true, written: true } },
+        where: isNull(moduleTable.deleted_at),
+        orderBy: [asc(moduleTable.order), asc(moduleTable.created_at)],
+        with: {
+          slides: { columns: { id: true } },
+          questions: { columns: { id: true } },
+          written: { columns: { id: true } },
         },
       },
     },
@@ -94,6 +101,15 @@ export default async function CoursePage({
     notFound();
   }
 
+  const modules = course.modules.map((courseModule) => ({
+    ...courseModule,
+    _count: {
+      slides: courseModule.slides.length,
+      questions: courseModule.questions.length,
+      written: courseModule.written.length,
+    },
+  }));
+
   const enrollmentCount = await getCourseEnrollmentCount(id);
   const isEnrolled = await isEnrolledInCourse(id);
   let ratingData = { average: 0, count: 0 };
@@ -103,9 +119,9 @@ export default async function CoursePage({
     console.warn("Failed to fetch rating data:", error);
   }
 
-  const totalLessons = course.modules.reduce((sum, m) => sum + m._count.slides, 0);
-  const totalQuestions = course.modules.reduce((sum, m) => sum + m._count.questions, 0);
-  const totalWritten = course.modules.reduce((sum, m) => sum + m._count.written, 0);
+  const totalLessons = modules.reduce((sum, m) => sum + m._count.slides, 0);
+  const totalQuestions = modules.reduce((sum, m) => sum + m._count.questions, 0);
+  const totalWritten = modules.reduce((sum, m) => sum + m._count.written, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,7 +205,7 @@ export default async function CoursePage({
               <div className="flex flex-wrap items-baseline justify-between gap-2 mb-5">
                 <h2 className="text-xl font-bold tracking-tight">Curriculum</h2>
                 <p className="font-mono text-[11px] text-muted-foreground">
-                  {course.modules.length} {course.modules.length === 1 ? "module" : "modules"}
+                  {modules.length} {modules.length === 1 ? "module" : "modules"}
                   {", "}
                   {totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}
                   {totalQuestions > 0 && `, ${totalQuestions} practice questions`}
@@ -198,13 +214,13 @@ export default async function CoursePage({
                 </p>
               </div>
 
-              {course.modules.length === 0 ? (
+              {modules.length === 0 ? (
                 <p className="text-muted-foreground">
                   The instructor hasn&apos;t published any modules yet.
                 </p>
               ) : (
                 <ol className="space-y-2.5">
-                  {course.modules.map((courseModule, index) => (
+                  {modules.map((courseModule, index) => (
                     <li
                       key={courseModule.id}
                       className="flex items-center gap-3.5 rounded-xl border border-border bg-background p-3.5"
@@ -268,8 +284,8 @@ export default async function CoursePage({
                     <li className="flex items-center gap-2.5">
                       <Layers className="h-4 w-4 shrink-0 text-primary" />
                       <span>
-                        {course.modules.length}{" "}
-                        {course.modules.length === 1 ? "module" : "modules"}
+                        {modules.length}{" "}
+                        {modules.length === 1 ? "module" : "modules"}
                       </span>
                     </li>
                     <li className="flex items-center gap-2.5">

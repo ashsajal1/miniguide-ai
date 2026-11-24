@@ -1,4 +1,11 @@
-import prisma from "@/prisma/client";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  course as courseTable,
+  module as moduleTable,
+  user as userTable,
+  userModuleProgress as progressTable,
+} from "@/db/schema";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,9 +30,9 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { courseId } = await params;
   const { userId } = await auth();
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { name: true, creator: true },
+  const course = await db.query.course.findFirst({
+    where: eq(courseTable.id, courseId),
+    columns: { name: true, creator: true },
   });
 
   if (!course || course.creator !== userId) {
@@ -47,49 +54,51 @@ export default async function page({
   const { userId: clerkId } = await auth();
 
   // Guides are private: only the creator can learn from one.
-  const courseOwner = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { creator: true },
+  const courseOwner = await db.query.course.findFirst({
+    where: eq(courseTable.id, courseId),
+    columns: { creator: true },
   });
   if (!courseOwner || courseOwner.creator !== clerkId) {
     notFound();
   }
 
-  const courseModules = await prisma.module.findMany({
-    where: {
-      course_id: courseId,
-      deleted_at: null,
-    },
-    select: {
+  const moduleRows = await db.query.module.findMany({
+    where: and(
+      eq(moduleTable.course_id, courseId),
+      isNull(moduleTable.deleted_at),
+    ),
+    columns: {
       id: true,
       title: true,
       course_id: true,
       created_at: true,
       updated_at: true,
-      _count: {
-        select: { slides: true, written: true },
-      },
     },
-    orderBy: {
-      order: "asc",
+    with: {
+      slides: { columns: { id: true } },
+      written: { columns: { id: true } },
     },
+    orderBy: asc(moduleTable.order),
   });
+  const courseModules = moduleRows.map((m) => ({
+    ...m,
+    _count: { slides: m.slides.length, written: m.written.length },
+  }));
 
   const userProgress: Map<
     string,
     { isCompleted: boolean; completedAt: Date | null }
   > = new Map();
 
-  if (clerkId) {
-    const user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
-      include: {
+  if (clerkId && courseModules.length > 0) {
+    const user = await db.query.user.findFirst({
+      where: eq(userTable.clerk_id, clerkId),
+      with: {
         modules_progress: {
-          where: {
-            module_id: {
-              in: courseModules.map((m) => m.id),
-            },
-          },
+          where: inArray(
+            progressTable.module_id,
+            courseModules.map((m) => m.id),
+          ),
         },
       },
     });

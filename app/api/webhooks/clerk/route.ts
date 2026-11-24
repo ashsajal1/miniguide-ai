@@ -1,7 +1,9 @@
+import { eq } from "drizzle-orm";
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import prisma from '@/prisma/client'
+import db from '@/db/client'
+import { user } from '@/db/schema'
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
@@ -53,11 +55,7 @@ export async function POST(req: Request) {
     const { id } = evt.data
 
     try {
-      await prisma.user.create({
-        data: {
-          clerk_id: id,
-        },
-      })
+      await db.insert(user).values({ clerk_id: id })
       console.log(`User created with clerk_id: ${id}`)
     } catch (error) {
       console.error('Error creating user in DB:', error)
@@ -67,11 +65,10 @@ export async function POST(req: Request) {
     const { id } = evt.data
     // Ensure user exists
     try {
-        await prisma.user.upsert({
-            where: { clerk_id: id },
-            update: {}, // No fields to update currently
-            create: { clerk_id: id },
-        })
+        await db
+          .insert(user)
+          .values({ clerk_id: id })
+          .onConflictDoNothing({ target: user.clerk_id })
         console.log(`User updated/ensured with clerk_id: ${id}`)
     } catch (error) {
         console.error('Error updating user in DB:', error)
@@ -82,10 +79,10 @@ export async function POST(req: Request) {
     const { id } = evt.data
     if (id) {
         try {
-            await prisma.user.update({
-                where: { clerk_id: id },
-                data: { deleted_at: new Date() }
-            })
+            await db
+              .update(user)
+              .set({ deleted_at: new Date(), updated_at: new Date() })
+              .where(eq(user.clerk_id, id))
             console.log(`User deleted (soft) with clerk_id: ${id}`)
         } catch (error) {
             console.error('Error deleting user in DB:', error)

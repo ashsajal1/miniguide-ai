@@ -1,7 +1,8 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import db from "@/db/client";
+import { content, course as courseTable, module as moduleTable, option, question, slide, written } from "@/db/schema";
 import { CourseOutline, ModuleOutline } from "@/lib/course-ai-service";
 import { generateSlideContent } from "@/app/course/edit/[id]/slide/ai-actions";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
@@ -96,16 +97,14 @@ export async function createCourseFromOutline(
 
     // Stage 1: Create course record
 
-    const course = await prisma.course.create({
-      data: {
-        name: outline.title,
-        description: outline.description,
-        difficulty: outline.difficulty,
-        lang: outline.language,
-        thumbnail_url: "", // Will be updated later if needed
-        creator: user.id,
-      },
-    });
+    const [course] = await db.insert(courseTable).values({
+      name: outline.title,
+      description: outline.description,
+      difficulty: outline.difficulty,
+      lang: outline.language,
+      thumbnail_url: "", // Will be updated later if needed
+      creator: user.id,
+    }).returning();
 
     const generatedCourse: GeneratedCourse = {
       id: course.id,
@@ -148,13 +147,11 @@ export async function createCourseFromOutline(
       const moduleOrder = i + 1;
 
       // Create module
-      const newModule = await prisma.module.create({
-        data: {
-          title: moduleOutline.title,
-          course_id: course.id,
-          order: moduleOutline.order ?? moduleOrder,
-        },
-      });
+      const [newModule] = await db.insert(moduleTable).values({
+        title: moduleOutline.title,
+        course_id: course.id,
+        order: moduleOutline.order ?? moduleOrder,
+      }).returning();
 
       const moduleId = newModule.id;
 
@@ -189,34 +186,30 @@ export async function createCourseFromOutline(
           const slideOutline = moduleOutline.slides[j];
 
           // Create content relationship first
-          const contentItem = await prisma.content.create({
-            data: {
-              type: 'SLIDE',
-              order: orderCursor.next++,
-              module_id: moduleId,
-            },
-          });
+          const [contentItem] = await db.insert(content).values({
+            type: 'SLIDE',
+            order: orderCursor.next++,
+            module_id: moduleId,
+          }).returning();
 
           // Create slide in database
-          const slide = await prisma.slide.create({
-            data: {
-              title: slideOutline.title,
-              content: slideOutline.content,
-              module_id: moduleId,
-              content_item_id: contentItem.id,
-            },
-          });
+          const [slideRecord] = await db.insert(slide).values({
+            title: slideOutline.title,
+            content: slideOutline.content,
+            module_id: moduleId,
+            content_item_id: contentItem.id,
+          }).returning();
 
           slides.push({
-            id: slide.id,
-            title: slide.title ?? `Slide ${j + 1}`,
-            content: slide.content,
+            id: slideRecord.id,
+            title: slideRecord.title ?? `Slide ${j + 1}`,
+            content: slideRecord.content,
             order: contentItem.order,
           });
 
           generationState.slides!.push({
             module: moduleOutline.title,
-            title: slide.title ?? `Slide ${j + 1}`,
+            title: slideRecord.title ?? `Slide ${j + 1}`,
           });
         }
       } else {
@@ -239,41 +232,35 @@ export async function createCourseFromOutline(
           const questionOutline = moduleOutline.questions[j];
 
           // Create content relationship first
-          const questionContentItem = await prisma.content.create({
-            data: {
-              type: 'QUESTION',
-              order: orderCursor.next++,
-              module_id: moduleId,
-            },
-          });
+          const [questionContentItem] = await db.insert(content).values({
+            type: 'QUESTION',
+            order: orderCursor.next++,
+            module_id: moduleId,
+          }).returning();
 
           // Create question in database
-          const questionRecord = await prisma.question.create({
-            data: {
-              title: questionOutline.title,
-              content: questionOutline.content,
-              module_id: moduleId,
-              content_item_id: questionContentItem.id,
-            },
-          });
+          const [questionRecord] = await db.insert(question).values({
+            title: questionOutline.title,
+            content: questionOutline.content,
+            module_id: moduleId,
+            content_item_id: questionContentItem.id,
+          }).returning();
 
           // Create options
           const questionOptions: QuestionOption[] = [];
           for (const optionData of questionOutline.options) {
-            const option = await prisma.option.create({
-              data: {
-                text: optionData.text,
-                isCorrect: optionData.isCorrect,
-                explanation: optionData.explanation || "",
-                questionId: questionRecord.id,
-              },
-            });
+            const [createdOption] = await db.insert(option).values({
+              text: optionData.text,
+              isCorrect: optionData.isCorrect,
+              explanation: optionData.explanation || "",
+              questionId: questionRecord.id,
+            }).returning();
 
             questionOptions.push({
-              id: option.id,
-              text: option.text,
-              isCorrect: option.isCorrect,
-              explanation: option.explanation ?? "",
+              id: createdOption.id,
+              text: createdOption.text,
+              isCorrect: createdOption.isCorrect,
+              explanation: createdOption.explanation ?? "",
             });
           }
 
@@ -319,22 +306,18 @@ export async function createCourseFromOutline(
         ? writtenResult.task
         : buildFallbackWrittenTask(moduleOutline);
 
-      const writtenContentItem = await prisma.content.create({
-        data: {
-          type: "WRITTEN",
-          order: orderCursor.next++,
-          module_id: moduleId,
-        },
-      });
-      const writtenRecord = await prisma.written.create({
-        data: {
-          title: writtenTask.title,
-          prompt: writtenTask.prompt,
-          guidance: writtenTask.guidance ?? null,
-          module_id: moduleId,
-          content_item_id: writtenContentItem.id,
-        },
-      });
+      const [writtenContentItem] = await db.insert(content).values({
+        type: "WRITTEN",
+        order: orderCursor.next++,
+        module_id: moduleId,
+      }).returning();
+      const [writtenRecord] = await db.insert(written).values({
+        title: writtenTask.title,
+        prompt: writtenTask.prompt,
+        guidance: writtenTask.guidance ?? null,
+        module_id: moduleId,
+        content_item_id: writtenContentItem.id,
+      }).returning();
 
       generatedModule.written = {
         id: writtenRecord.id,
@@ -419,35 +402,31 @@ Do not introduce or summarise the module.`;
 
       if (slideResult.success && slideResult.content) {
         // Create content relationship first
-        const contentItem = await prisma.content.create({
-          data: {
-            type: 'SLIDE',
-            order: orderCursor.next++,
-            module_id: moduleId,
-          },
-        });
+        const [contentItem] = await db.insert(content).values({
+          type: 'SLIDE',
+          order: orderCursor.next++,
+          module_id: moduleId,
+        }).returning();
 
         // Create slide in database
-        const slide = await prisma.slide.create({
-          data: {
-            title: slideResult.title || `Slide ${i + 1}`,
-            content: slideResult.content,
-            module_id: moduleId,
-            content_item_id: contentItem.id,
-          },
-        });
+        const [slideRecord] = await db.insert(slide).values({
+          title: slideResult.title || `Slide ${i + 1}`,
+          content: slideResult.content,
+          module_id: moduleId,
+          content_item_id: contentItem.id,
+        }).returning();
 
         slides.push({
-          id: slide.id,
-          title: slide.title ?? `Slide ${i + 1}`,
-          content: slide.content,
+          id: slideRecord.id,
+          title: slideRecord.title ?? `Slide ${i + 1}`,
+          content: slideRecord.content,
           order: contentItem.order,
         });
 
         // Record in the shared generation state so the next slide/question builds on this one
         scope?.context?.state?.slides?.push({
           module: moduleOutline.title,
-          title: slide.title ?? `Slide ${i + 1}`,
+          title: slideRecord.title ?? `Slide ${i + 1}`,
         });
       }
     }
@@ -513,41 +492,35 @@ Create a challenging but fair question that requires understanding of the materi
 
       if (questionResult.success && questionResult.mcq) {
         // Create content relationship first
-        const questionContentItem = await prisma.content.create({
-          data: {
-            type: 'QUESTION',
-            order: orderCursor.next++,
-            module_id: moduleId,
-          },
-        });
+        const [questionContentItem] = await db.insert(content).values({
+          type: 'QUESTION',
+          order: orderCursor.next++,
+          module_id: moduleId,
+        }).returning();
 
         // Create question in database
-        const questionRecord = await prisma.question.create({
-          data: {
-            title: questionResult.mcq.title || `Question ${i + 1}`,
-            content: questionResult.mcq.question,
-            module_id: moduleId,
-            content_item_id: questionContentItem.id,
-          },
-        });
+        const [questionRecord] = await db.insert(question).values({
+          title: questionResult.mcq.title || `Question ${i + 1}`,
+          content: questionResult.mcq.question,
+          module_id: moduleId,
+          content_item_id: questionContentItem.id,
+        }).returning();
 
         // Create options
         const questionOptions: QuestionOption[] = [];
         for (const optionData of questionResult.mcq.options) {
-          const option = await prisma.option.create({
-            data: {
-              text: optionData.text,
-              isCorrect: optionData.isCorrect,
-              explanation: optionData.explanation || "",
-              questionId: questionRecord.id,
-            },
-          });
+          const [createdOption] = await db.insert(option).values({
+            text: optionData.text,
+            isCorrect: optionData.isCorrect,
+            explanation: optionData.explanation || "",
+            questionId: questionRecord.id,
+          }).returning();
 
           questionOptions.push({
-            id: option.id,
-            text: option.text,
-            isCorrect: option.isCorrect,
-            explanation: option.explanation ?? "",
+            id: createdOption.id,
+            text: createdOption.text,
+            isCorrect: createdOption.isCorrect,
+            explanation: createdOption.explanation ?? "",
           });
         }
 

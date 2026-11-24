@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import { asc, eq } from "drizzle-orm";
+import db from "@/db/client";
+import { content, course as courseTable, module as moduleTable, user } from "@/db/schema";
 
 /**
  * Stateful context for AI generation.
@@ -87,11 +89,11 @@ export async function loadLearnerProfile(): Promise<string> {
   try {
     const { userId } = await auth();
     if (!userId) return "";
-    const user = await prisma.user.findUnique({
-      where: { clerk_id: userId },
-      select: { profile_context: true },
+    const dbUser = await db.query.user.findFirst({
+      where: eq(user.clerk_id, userId),
+      columns: { profile_context: true },
     });
-    return user?.profile_context?.trim().slice(0, MAX_PROFILE_CHARS) ?? "";
+    return dbUser?.profile_context?.trim().slice(0, MAX_PROFILE_CHARS) ?? "";
   } catch {
     return "";
   }
@@ -198,22 +200,26 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
   const { courseId, moduleId } = scope;
   if (!courseId && !moduleId) return null;
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId ?? (await moduleIdToCourseId(moduleId!)) },
-    include: {
+  const course = await db.query.course.findFirst({
+    where: eq(courseTable.id, courseId ?? (await moduleIdToCourseId(moduleId!))),
+    with: {
       modules: {
-        orderBy: { order: "asc" },
-        select: {
+        orderBy: asc(moduleTable.order),
+        columns: {
           id: true,
           title: true,
           order: true,
+        },
+        with: {
           content: {
-            orderBy: { order: "asc" },
-            select: {
+            orderBy: asc(content.order),
+            columns: {
               type: true,
-              slide: { select: { title: true, content: true } },
-              question: { select: { title: true, content: true } },
-              written: { select: { title: true } },
+            },
+            with: {
+              slide: { columns: { title: true, content: true } },
+              question: { columns: { title: true, content: true } },
+              written: { columns: { title: true } },
             },
           },
         },
@@ -276,9 +282,9 @@ export async function loadAiContext(scope: AiScope): Promise<ResolvedAiContext |
 }
 
 async function moduleIdToCourseId(moduleId: string): Promise<string> {
-  const mod = await prisma.module.findUnique({
-    where: { id: moduleId },
-    select: { course_id: true },
+  const mod = await db.query.module.findFirst({
+    where: eq(moduleTable.id, moduleId),
+    columns: { course_id: true },
   });
   return mod?.course_id ?? moduleId;
 }

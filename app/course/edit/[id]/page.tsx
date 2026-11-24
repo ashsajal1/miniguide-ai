@@ -1,4 +1,10 @@
-import prisma from "@/prisma/client";
+import { asc, eq } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  course as courseTable,
+  module as moduleTable,
+} from "@/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import Modules from "./modules";
 import CourseStatusToggle from "./course-status-toggle";
@@ -20,26 +26,23 @@ export default async function ManageCourse({
 }) {
   const { id } = await params;
   const { userId } = await auth();
-  const course = await prisma.course.findUnique({
-    where: {
-      id: id,
-    },
-    include: {
+  const course = await db.query.course.findFirst({
+    where: eq(courseTable.id, id),
+    with: {
       modules: {
-        include: {
+        orderBy: asc(moduleTable.order),
+        with: {
           content: {
-            orderBy: { order: "asc" },
-            include: {
+            orderBy: asc(contentTable.order),
+            with: {
               slide: {
-                select: { id: true, title: true, content: true },
+                columns: { id: true, title: true, content: true },
               },
               question: {
-                select: {
-                  id: true,
-                  title: true,
-                  content: true,
+                columns: { id: true, title: true, content: true },
+                with: {
                   options: {
-                    select: {
+                    columns: {
                       id: true,
                       text: true,
                       isCorrect: true,
@@ -49,7 +52,7 @@ export default async function ManageCourse({
                 },
               },
               written: {
-                select: {
+                columns: {
                   id: true,
                   title: true,
                   prompt: true,
@@ -58,9 +61,6 @@ export default async function ManageCourse({
               },
             },
           },
-        },
-        orderBy: {
-          order: "asc",
         },
       },
     },

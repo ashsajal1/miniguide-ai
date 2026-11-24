@@ -1,8 +1,16 @@
 "use server";
 
+import { and, asc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
-import { ContentType, UserLevel } from "@prisma/client";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  user as userTable,
+  userModuleProgress as progressTable,
+  written as writtenTable,
+  writtenSubmission as submissionTable,
+} from "@/db/schema";
+import type { UserLevel } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { isAiConfigured } from "@/lib/ai";
 import { analyzeWrittenAnswer, WrittenVerdict } from "@/lib/written-ai";
@@ -18,10 +26,10 @@ const XP_THRESHOLDS = {
 };
 
 function calculateLevel(xp: number): UserLevel {
-  if (xp >= XP_THRESHOLDS.MASTER) return UserLevel.MASTER;
-  if (xp >= XP_THRESHOLDS.ADVANCED) return UserLevel.ADVANCED;
-  if (xp >= XP_THRESHOLDS.INTERMEDIATE) return UserLevel.INTERMEDIATE;
-  return UserLevel.BEGINNER;
+  if (xp >= XP_THRESHOLDS.MASTER) return "MASTER";
+  if (xp >= XP_THRESHOLDS.ADVANCED) return "ADVANCED";
+  if (xp >= XP_THRESHOLDS.INTERMEDIATE) return "INTERMEDIATE";
+  return "BEGINNER";
 }
 
 export async function completeModule(
@@ -36,28 +44,23 @@ export async function completeModule(
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    let user = await db.query.user.findFirst({
+      where: eq(userTable.clerk_id, clerkId),
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          clerk_id: clerkId,
-          xp: 0,
-          level: UserLevel.BEGINNER,
-        },
-      });
+      [user] = await db
+        .insert(userTable)
+        .values({ clerk_id: clerkId, xp: 0, level: "BEGINNER" })
+        .returning();
     }
 
     // Check if module is already completed
-    const existingProgress = await prisma.userModuleProgress.findUnique({
-      where: {
-        user_id_module_id: {
-          user_id: user.id,
-          module_id: moduleId,
-        },
-      },
+    const existingProgress = await db.query.userModuleProgress.findFirst({
+      where: and(
+        eq(progressTable.user_id, user.id),
+        eq(progressTable.module_id, moduleId),
+      ),
     });
 
     if (existingProgress?.is_completed) {
@@ -65,36 +68,32 @@ export async function completeModule(
     }
 
     // Update or create progress
-    await prisma.userModuleProgress.upsert({
-      where: {
-        user_id_module_id: {
-          user_id: user.id,
-          module_id: moduleId,
-        },
-      },
-      update: {
-        is_completed: true,
-        completed_at: new Date(),
-      },
-      create: {
+    const now = new Date();
+    await db
+      .insert(progressTable)
+      .values({
         user_id: user.id,
         module_id: moduleId,
         is_completed: true,
-        completed_at: new Date(),
-      },
-    });
+        completed_at: now,
+      })
+      .onConflictDoUpdate({
+        target: [progressTable.user_id, progressTable.module_id],
+        set: {
+          is_completed: true,
+          completed_at: now,
+          updated_at: now,
+        },
+      });
 
     // Award XP and update level
     const newXp = user.xp + XP_PER_MODULE;
     const newLevel = calculateLevel(newXp);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        xp: newXp,
-        level: newLevel,
-      },
-    });
+    await db
+      .update(userTable)
+      .set({ xp: newXp, level: newLevel, updated_at: new Date() })
+      .where(eq(userTable.id, user.id));
 
     revalidatePath(`/course/learn/${courseId}/${moduleId}`);
 
@@ -116,21 +115,19 @@ export async function getUserModuleProgress(moduleId: string): Promise<{
       return { isCompleted: false };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    const user = await db.query.user.findFirst({
+      where: eq(userTable.clerk_id, clerkId),
     });
 
     if (!user) {
       return { isCompleted: false };
     }
 
-    const progress = await prisma.userModuleProgress.findUnique({
-      where: {
-        user_id_module_id: {
-          user_id: user.id,
-          module_id: moduleId,
-        },
-      },
+    const progress = await db.query.userModuleProgress.findFirst({
+      where: and(
+        eq(progressTable.user_id, user.id),
+        eq(progressTable.module_id, moduleId),
+      ),
     });
 
     return {
@@ -202,25 +199,27 @@ export async function submitWrittenResponse(input: {
   }
 
   try {
-    const written = await prisma.written.findUnique({
-      where: { id: writtenId },
-      select: {
+    const written = await db.query.written.findFirst({
+      where: eq(writtenTable.id, writtenId),
+      columns: {
         id: true,
         module_id: true,
         prompt: true,
         guidance: true,
+      },
+      with: {
         module: {
-          select: {
-            title: true,
-            course_id: true,
+          columns: { title: true, course_id: true },
+          with: {
             course: {
-              select: { name: true, difficulty: true, lang: true },
+              columns: { name: true, difficulty: true, lang: true },
             },
             content: {
-              where: { type: ContentType.SLIDE },
-              orderBy: { order: "asc" },
-              select: {
-                slide: { select: { title: true, content: true } },
+              where: eq(contentTable.type, "SLIDE"),
+              orderBy: asc(contentTable.order),
+              columns: { id: true },
+              with: {
+                slide: { columns: { title: true, content: true } },
               },
             },
           },
@@ -269,38 +268,22 @@ export async function submitWrittenResponse(input: {
       };
     }
 
-    let user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    let user = await db.query.user.findFirst({
+      where: eq(userTable.clerk_id, clerkId),
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          clerk_id: clerkId,
-          xp: 0,
-          level: UserLevel.BEGINNER,
-        },
-      });
+      [user] = await db
+        .insert(userTable)
+        .values({ clerk_id: clerkId, xp: 0, level: "BEGINNER" })
+        .returning();
     }
 
     const feedback = analysis.feedback;
-    const submission = await prisma.writtenSubmission.upsert({
-      where: {
-        user_id_written_id: {
-          user_id: user.id,
-          written_id: written.id,
-        },
-      },
-      update: {
-        answer,
-        verdict: feedback.verdict,
-        score: feedback.score,
-        summary: feedback.summary,
-        strengths: feedback.strengths,
-        gaps: feedback.gaps,
-        model_answer: feedback.modelAnswer,
-      },
-      create: {
+    const now = new Date();
+    const [submission] = await db
+      .insert(submissionTable)
+      .values({
         answer,
         verdict: feedback.verdict,
         score: feedback.score,
@@ -310,8 +293,21 @@ export async function submitWrittenResponse(input: {
         model_answer: feedback.modelAnswer,
         user_id: user.id,
         written_id: written.id,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: [submissionTable.user_id, submissionTable.written_id],
+        set: {
+          answer,
+          verdict: feedback.verdict,
+          score: feedback.score,
+          summary: feedback.summary,
+          strengths: feedback.strengths,
+          gaps: feedback.gaps,
+          model_answer: feedback.modelAnswer,
+          updated_at: now,
+        },
+      })
+      .returning();
 
     revalidatePath(`/course/learn/${courseId}/${moduleId}`);
 
@@ -323,7 +319,7 @@ export async function submitWrittenResponse(input: {
         score: feedback.score,
         summary: feedback.summary,
         strengths: feedback.strengths,
-        gaps: submission.gaps,
+        gaps: submission.gaps ?? [],
         model_answer: submission.model_answer,
       },
     };

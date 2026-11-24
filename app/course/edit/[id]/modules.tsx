@@ -10,7 +10,8 @@ import {
   Pencil,
   PenLine,
 } from "lucide-react";
-import type { Module } from "@prisma/client";
+import type { InferSelectModel } from "drizzle-orm";
+import type { module as moduleTable } from "@/db/schema";
 import {
   deleteModule,
   deleteSlide,
@@ -106,7 +107,7 @@ function itemMeta(item: ContentItem) {
   return null;
 }
 
-type ModuleWithItems = Module & {
+type ModuleWithItems = InferSelectModel<typeof moduleTable> & {
   content: ContentItem[];
 };
 

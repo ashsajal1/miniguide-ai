@@ -1,15 +1,20 @@
 "use server";
 
-import { ContentType } from "@prisma/client";
-import prisma from "@/prisma/client";
+import { and, desc, eq } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  option as optionTable,
+  question as questionTable,
+} from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
 // Helper function to get the next order number for content items
 async function getNextOrder(moduleId: string): Promise<number> {
-  const lastItem = await prisma.content.findFirst({
-    where: { module_id: moduleId },
-    orderBy: { order: "desc" },
-    select: { order: true },
+  const lastItem = await db.query.content.findFirst({
+    where: eq(contentTable.module_id, moduleId),
+    orderBy: desc(contentTable.order),
+    columns: { order: true },
   });
 
   return (lastItem?.order || 0) + 1;
@@ -19,15 +24,15 @@ async function getNextOrder(moduleId: string): Promise<number> {
 export async function getPreviousSlideContent(moduleId: string): Promise<string | null> {
   try {
     // Find the last slide content item in the module
-    const lastSlideContent = await prisma.content.findFirst({
-      where: {
-        module_id: moduleId,
-        type: ContentType.SLIDE,
-      },
-      orderBy: { order: "desc" },
-      include: {
+    const lastSlideContent = await db.query.content.findFirst({
+      where: and(
+        eq(contentTable.module_id, moduleId),
+        eq(contentTable.type, "SLIDE"),
+      ),
+      orderBy: desc(contentTable.order),
+      with: {
         slide: {
-          select: { content: true, title: true },
+          columns: { content: true, title: true },
         },
       },
     });
@@ -56,34 +61,53 @@ export async function createQuestion(
 ) {
   try {
     // First create the content item
-    const contentItem = await prisma.content.create({
-      data: {
-        type: ContentType.QUESTION,
-        module_id: moduleId,
-        order: await getNextOrder(moduleId),
-      },
+    const contentId = crypto.randomUUID();
+    const questionId = crypto.randomUUID();
+    const contentInsert = db.insert(contentTable).values({
+      id: contentId,
+      type: "QUESTION",
+      module_id: moduleId,
+      order: await getNextOrder(moduleId),
+    });
+    const questionInsert = db.insert(questionTable).values({
+      id: questionId,
+      title,
+      content: question,
+      module_id: moduleId,
+      content_item_id: contentId,
     });
 
     // Create the question with options
-    const questionRecord = await prisma.question.create({
-      data: {
-        title,
-        content: question,
-        module_id: moduleId,
-        content_item_id: contentItem.id,
-        options: {
-          create: options.map((opt) => ({
-            text: opt.text,
-            isCorrect: opt.isCorrect,
-            explanation: opt.explanation || null,
-          })),
-        },
-      },
-      include: {
+    if (options.length > 0) {
+      await db.batch(
+        [
+          contentInsert,
+          questionInsert,
+          db.insert(optionTable).values(
+            options.map((opt) => ({
+              questionId,
+              text: opt.text,
+              isCorrect: opt.isCorrect,
+              explanation: opt.explanation || null,
+            })),
+          ),
+        ],
+      );
+    } else {
+      await db.batch([contentInsert, questionInsert]);
+    }
+
+    const questionRecord = await db.query.question.findFirst({
+      where: eq(questionTable.id, questionId),
+      with: {
         options: true,
         module: true, // include module to get course_id
       },
     });
+
+    if (!questionRecord) {
+      return { success: false, error: "Failed to create question" };
+    }
 
     revalidatePath(`/course/edit/${questionRecord.module.course_id}`);
     return { success: true, question: questionRecord };

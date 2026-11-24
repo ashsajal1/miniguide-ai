@@ -1,11 +1,13 @@
 "use server";
 
-import prisma from "@/prisma/client";
+import { eq } from "drizzle-orm";
+import db from "@/db/client";
+import { slide as slideTable } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
 export async function getSlide(slideId: string) {
-  return await prisma.slide.findUnique({
-    where: { id: slideId },
+  return await db.query.slide.findFirst({
+    where: eq(slideTable.id, slideId),
   });
 }
 
@@ -17,14 +19,15 @@ export async function updateSlide(
   references: string[] = []
 ) {
   try {
-    await prisma.slide.update({
-      where: { id: slideId },
-      data: {
+    await db
+      .update(slideTable)
+      .set({
         title,
         content,
         references,
-      },
-    });
+        updated_at: new Date(),
+      })
+      .where(eq(slideTable.id, slideId));
 
     revalidatePath(`/course/edit/${courseId}`);
     return { success: true };

@@ -1,6 +1,8 @@
 "use server"
-import prisma from "@/prisma/client";
+import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
+import db from "@/db/client";
+import { enrollment, user } from "@/db/schema";
 
 /**
  * Enrolls a user in a course
@@ -13,26 +15,20 @@ export async function enrollInCourse(courseId: string) {
   }
 
   // Find the user by clerk_id
-  let user = await prisma.user.findUnique({
-    where: { clerk_id: clerkId },
+  let existingUser = await db.query.user.findFirst({
+    where: eq(user.clerk_id, clerkId),
   });
 
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        clerk_id: clerkId,
-      },
-    });
+  if (!existingUser) {
+    [existingUser] = await db.insert(user).values({ clerk_id: clerkId }).returning();
   }
 
   // Check if user is already enrolled
-  const existingEnrollment = await prisma.enrollment.findUnique({
-    where: {
-      user_id_course_id: {
-        user_id: user.id,
-        course_id: courseId,
-      },
-    },
+  const existingEnrollment = await db.query.enrollment.findFirst({
+    where: and(
+      eq(enrollment.user_id, existingUser.id),
+      eq(enrollment.course_id, courseId),
+    ),
   });
 
   if (existingEnrollment) {
@@ -40,14 +36,12 @@ export async function enrollInCourse(courseId: string) {
   }
 
   // Create the enrollment record
-  const enrollment = await prisma.enrollment.create({
-    data: {
-      user_id: user.id,
-      course_id: courseId,
-    },
-  });
+  const [created] = await db
+    .insert(enrollment)
+    .values({ user_id: existingUser.id, course_id: courseId })
+    .returning();
 
-  return enrollment;
+  return created;
 }
 
 /**
@@ -60,22 +54,22 @@ export async function isEnrolledInCourse(courseId: string) {
     return false;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { clerk_id: clerkId },
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.clerk_id, clerkId),
   });
 
-  if (!user) {
+  if (!existingUser) {
     return false;
   }
 
-  const enrollment = await prisma.enrollment.findFirst({
-    where: {
-      user_id: user.id,
-      course_id: courseId,
-    },
+  const existingEnrollment = await db.query.enrollment.findFirst({
+    where: and(
+      eq(enrollment.user_id, existingUser.id),
+      eq(enrollment.course_id, courseId),
+    ),
   });
 
-  return !!enrollment;
+  return !!existingEnrollment;
 }
 
 /**
@@ -88,24 +82,18 @@ export async function getEnrolledCourses() {
     return [];
   }
 
-  const user = await prisma.user.findUnique({
-    where: { clerk_id: clerkId },
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.clerk_id, clerkId),
   });
 
-  if (!user) {
+  if (!existingUser) {
     return [];
   }
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: {
-      user_id: user.id,
-    },
-    include: {
-      course: true,
-    },
-    orderBy: {
-      enrolled_at: "desc",
-    },
+  const enrollments = await db.query.enrollment.findMany({
+    where: eq(enrollment.user_id, existingUser.id),
+    with: { course: true },
+    orderBy: desc(enrollment.enrolled_at),
   });
 
   return enrollments.map(enrollment => ({
@@ -123,13 +111,12 @@ export async function getEnrolledCourses() {
  * Gets enrollment count for a course
  */
 export async function getCourseEnrollmentCount(courseId: string) {
-  const count = await prisma.enrollment.count({
-    where: {
-      course_id: courseId,
-    },
+  const enrollments = await db.query.enrollment.findMany({
+    where: eq(enrollment.course_id, courseId),
+    columns: { id: true },
   });
 
-  return count;
+  return enrollments.length;
 }
 
 /**
@@ -142,34 +129,30 @@ export async function markCourseAsCompleted(courseId: string) {
     throw new Error("User not authenticated");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { clerk_id: clerkId },
+  const existingUser = await db.query.user.findFirst({
+    where: eq(user.clerk_id, clerkId),
   });
 
-  if (!user) {
+  if (!existingUser) {
     throw new Error("User not found");
   }
 
-  const enrollment = await prisma.enrollment.findFirst({
-    where: {
-      user_id: user.id,
-      course_id: courseId,
-    },
+  const existingEnrollment = await db.query.enrollment.findFirst({
+    where: and(
+      eq(enrollment.user_id, existingUser.id),
+      eq(enrollment.course_id, courseId),
+    ),
   });
 
-  if (!enrollment) {
+  if (!existingEnrollment) {
     throw new Error("User is not enrolled in this course");
   }
 
-  const updatedEnrollment = await prisma.enrollment.update({
-    where: {
-      id: enrollment.id,
-    },
-    data: {
-      is_completed: true,
-      completed_at: new Date(),
-    },
-  });
+  const [updatedEnrollment] = await db
+    .update(enrollment)
+    .set({ is_completed: true, completed_at: new Date() })
+    .where(eq(enrollment.id, existingEnrollment.id))
+    .returning();
 
   return updatedEnrollment;
 }

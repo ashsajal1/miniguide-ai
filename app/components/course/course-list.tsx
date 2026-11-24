@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Filter, X } from "lucide-react";
-import type { Course, Category } from "@prisma/client";
+import { useState, useMemo, useEffect, useRef } from "react";
 import CourseCard from "@/app/components/course/course-card";
 
-type CourseWithCount = Course & {
+type CourseWithCount = {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: string;
+  lang: string;
+  thumbnail_url: string;
+  category_id: string | null;
   _count: {
     modules: number;
   };
-  category?: Category | null;
+  category?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 const difficultyOptions = ["Beginner", "Intermediate", "Advanced"] as const;

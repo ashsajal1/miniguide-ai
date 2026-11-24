@@ -1,23 +1,24 @@
 "use server";
 
-import { Prisma, ContentType } from "@prisma/client";
-import prisma from "@/prisma/client";
+import { desc, eq } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  module as moduleTable,
+  slide as slideTable,
+} from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
 // Helper function to get the next order number for content items
 async function getNextOrder(moduleId: string): Promise<number> {
-  const lastItem = await prisma.content.findFirst({
-    where: { module_id: moduleId },
-    orderBy: { order: "desc" },
-    select: { order: true },
+  const lastItem = await db.query.content.findFirst({
+    where: eq(contentTable.module_id, moduleId),
+    orderBy: desc(contentTable.order),
+    columns: { order: true },
   });
 
   return (lastItem?.order || 0) + 1;
 }
-
-type SlideWithContentItem = Prisma.SlideGetPayload<{
-  include: { content_item: true };
-}>;
 
 export async function createSlide(
   moduleId: string,
@@ -26,38 +27,42 @@ export async function createSlide(
   references: string[] = []
 ): Promise<{
   success: boolean;
-  slide?: SlideWithContentItem;
+  slide?: typeof slideTable.$inferSelect & {
+    content_item: typeof contentTable.$inferSelect | null;
+  };
   error?: string;
 }> {
   try {
-    const moduleData = await prisma.module.findUnique({
-      where: { id: moduleId },
-      select: { course_id: true },
+    const moduleData = await db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { course_id: true },
     });
 
     if (!moduleData) {
       return { success: false, error: "Module not found" };
     }
 
-    // First create the content item
-    const contentItem = await prisma.content.create({
-      data: {
-        type: ContentType.SLIDE,
+    // Create the content item and slide together
+    const contentId = crypto.randomUUID();
+    await db.batch([
+      db.insert(contentTable).values({
+        id: contentId,
+        type: "SLIDE",
         module_id: moduleId,
         order: await getNextOrder(moduleId),
-      },
-    });
-
-    // Then create the slide with the content_item_id
-    const slide = await prisma.slide.create({
-      data: {
+      }),
+      db.insert(slideTable).values({
         title: title,
         content: content,
         references,
         module_id: moduleId,
-        content_item_id: contentItem.id,
-      },
-      include: {
+        content_item_id: contentId,
+      }),
+    ]);
+
+    const slide = await db.query.slide.findFirst({
+      where: eq(slideTable.content_item_id, contentId),
+      with: {
         content_item: true,
       },
     });
@@ -65,7 +70,7 @@ export async function createSlide(
     revalidatePath(`/course/edit/${moduleData.course_id}`);
     return {
       success: true,
-      slide: slide,
+      slide: slide ?? undefined,
     };
   } catch (error) {
     console.error("Error creating slide:", error);

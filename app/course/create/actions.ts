@@ -1,7 +1,8 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import db from "@/db/client";
+import { course as courseTable } from "@/db/schema";
 import { validateCourseData } from "./course-validation";
 
 type CreateCourseResponse = {
@@ -41,12 +42,10 @@ export async function createCourse(
     }
 
     // If validation passes, create the course
-    const course = await prisma.course.create({
-      data: {
-        ...validation.data!,
-        creator: user.id,
-      },
-    });
+    const [course] = await db.insert(courseTable).values({
+      ...validation.data!,
+      creator: user.id,
+    }).returning();
 
     return { success: true, course };
   } catch (error) {

@@ -1,31 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import Question from "@/app/components/course/question";
-import { Prisma } from "@prisma/client";
-
-type QuestionWithOptions = Prisma.QuestionGetPayload<{
-  include: {
-    options: true;
-    content_item: true;
-  };
-}>;
-
-type Option = Prisma.OptionGetPayload<{
-  select: {
-    id: true;
-    text: true;
-    isCorrect: true;
-    questionId: true;
-    explanation: true;
-    created_at: true;
-    updated_at: true;
-  };
-}>;
 
 const mockDate = new Date("2024-01-01T00:00:00.000Z");
 
 describe("Question Component", () => {
-  const mockOptions: Option[] = [
+  const mockOptions = [
     {
       id: "opt1",
       text: "Option A",
@@ -55,7 +35,7 @@ describe("Question Component", () => {
     },
   ];
 
-  const mockQuestion: QuestionWithOptions = {
+  const mockQuestion = {
     id: "q1",
     title: "Test Question",
     content: "What is the correct answer?",
@@ -155,7 +135,7 @@ describe("Question Component", () => {
   });
 
   it("renders inline markdown in the prompt and options", () => {
-    const markdownQuestion: QuestionWithOptions = {
+    const markdownQuestion = {
       ...mockQuestion,
       content: "Which hook runs **side effects**?",
       options: [

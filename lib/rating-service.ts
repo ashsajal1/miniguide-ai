@@ -1,26 +1,24 @@
 "use server";
-import prisma from "@/prisma/client";
+import { and, avg, count, desc, eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
+import db from "@/db/client";
+import { rating, user } from "@/db/schema";
 
 /**
  * Gets all ratings for a course
  */
 export async function getCourseRatings(courseId: string) {
   try {
-    const ratings = await prisma.rating.findMany({
-      where: {
-        course_id: courseId,
-      },
-      include: {
+    const ratings = await db.query.rating.findMany({
+      where: eq(rating.course_id, courseId),
+      with: {
         user: {
-          select: {
+          columns: {
             clerk_id: true,
           },
         },
       },
-      orderBy: {
-        created_at: "desc",
-      },
+      orderBy: desc(rating.created_at),
     });
 
     return ratings;
@@ -35,21 +33,14 @@ export async function getCourseRatings(courseId: string) {
  */
 export async function getAverageRating(courseId: string) {
   try {
-    const result = await prisma.rating.aggregate({
-      where: {
-        course_id: courseId,
-      },
-      _avg: {
-        rating: true,
-      },
-      _count: {
-        rating: true,
-      },
-    });
+    const [result] = await db
+      .select({ average: avg(rating.rating), count: count() })
+      .from(rating)
+      .where(eq(rating.course_id, courseId));
 
     return {
-      average: result._avg.rating || 0,
-      count: result._count.rating,
+      average: Number(result?.average ?? 0),
+      count: result?.count ?? 0,
     };
   } catch (error) {
     console.warn("Rating functionality not available:", error);
@@ -60,7 +51,7 @@ export async function getAverageRating(courseId: string) {
 /**
  * Submits a rating for a course
  */
-export async function submitRating(courseId: string, rating: number, review?: string) {
+export async function submitRating(courseId: string, ratingValue: number, review?: string) {
   try {
     const { userId: clerkId } = await auth();
 
@@ -68,57 +59,35 @@ export async function submitRating(courseId: string, rating: number, review?: st
       throw new Error("User not authenticated");
     }
 
-    if (rating < 1 || rating > 5) {
+    if (ratingValue < 1 || ratingValue > 5) {
       throw new Error("Rating must be between 1 and 5");
     }
 
     // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    let existingUser = await db.query.user.findFirst({
+      where: eq(user.clerk_id, clerkId),
     });
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          clerk_id: clerkId,
-        },
-      });
+    if (!existingUser) {
+      [existingUser] = await db.insert(user).values({ clerk_id: clerkId }).returning();
     }
 
-    // Check if user already rated this course
-    const existingRating = await prisma.rating.findUnique({
-      where: {
-        user_id_course_id: {
-          user_id: user.id,
-          course_id: courseId,
-        },
-      },
-    });
+    // Upsert the rating (one per user and course)
+    const [savedRating] = await db
+      .insert(rating)
+      .values({
+        user_id: existingUser.id,
+        course_id: courseId,
+        rating: ratingValue,
+        review,
+      })
+      .onConflictDoUpdate({
+        target: [rating.user_id, rating.course_id],
+        set: { rating: ratingValue, review, updated_at: new Date() },
+      })
+      .returning();
 
-    if (existingRating) {
-      // Update existing rating
-      const updatedRating = await prisma.rating.update({
-        where: {
-          id: existingRating.id,
-        },
-        data: {
-          rating,
-          review,
-        },
-      });
-      return updatedRating;
-    } else {
-      // Create new rating
-      const newRating = await prisma.rating.create({
-        data: {
-          user_id: user.id,
-          course_id: courseId,
-          rating,
-          review,
-        },
-      });
-      return newRating;
-    }
+    return savedRating;
   } catch (error) {
     console.warn("Rating functionality not available:", error);
     throw error;
@@ -136,22 +105,22 @@ export async function hasUserRatedCourse(courseId: string) {
       return false;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    const existingUser = await db.query.user.findFirst({
+      where: eq(user.clerk_id, clerkId),
     });
 
-    if (!user) {
+    if (!existingUser) {
       return false;
     }
 
-    const rating = await prisma.rating.findFirst({
-      where: {
-        user_id: user.id,
-        course_id: courseId,
-      },
+    const existingRating = await db.query.rating.findFirst({
+      where: and(
+        eq(rating.user_id, existingUser.id),
+        eq(rating.course_id, courseId),
+      ),
     });
 
-    return !!rating;
+    return !!existingRating;
   } catch (error) {
     console.warn("Rating functionality not available:", error);
     return false;
@@ -169,22 +138,22 @@ export async function getUserRatingForCourse(courseId: string) {
       return null;
     }
 
-    const user = await prisma.user.findUnique({
-      where: { clerk_id: clerkId },
+    const existingUser = await db.query.user.findFirst({
+      where: eq(user.clerk_id, clerkId),
     });
 
-    if (!user) {
+    if (!existingUser) {
       return null;
     }
 
-    const rating = await prisma.rating.findFirst({
-      where: {
-        user_id: user.id,
-        course_id: courseId,
-      },
+    const existingRating = await db.query.rating.findFirst({
+      where: and(
+        eq(rating.user_id, existingUser.id),
+        eq(rating.course_id, courseId),
+      ),
     });
 
-    return rating;
+    return existingRating ?? null;
   } catch (error) {
     console.warn("Rating functionality not available:", error);
     return null;

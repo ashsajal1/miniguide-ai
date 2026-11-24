@@ -1,19 +1,23 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import db from "@/db/client";
+import { written as writtenTable } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 
 export async function getWritten(writtenId: string) {
-  const written = await prisma.written.findUnique({
-    where: { id: writtenId },
-    select: {
+  const written = await db.query.written.findFirst({
+    where: eq(writtenTable.id, writtenId),
+    columns: {
       id: true,
       title: true,
       prompt: true,
       guidance: true,
       module_id: true,
-      module: { select: { course_id: true } },
+    },
+    with: {
+      module: { columns: { course_id: true } },
     },
   });
 
@@ -33,14 +37,14 @@ export async function updateWritten(
       return { success: false, error: "Unauthorized" };
     }
 
-    const written = await prisma.written.findUnique({
-      where: { id: writtenId },
-      select: {
-        module_id: true,
+    const written = await db.query.written.findFirst({
+      where: eq(writtenTable.id, writtenId),
+      columns: { module_id: true },
+      with: {
         module: {
-          select: {
-            course_id: true,
-            course: { select: { creator: true } },
+          columns: { course_id: true },
+          with: {
+            course: { columns: { creator: true } },
           },
         },
       },
@@ -54,14 +58,15 @@ export async function updateWritten(
       return { success: false, error: "Unauthorized" };
     }
 
-    await prisma.written.update({
-      where: { id: writtenId },
-      data: {
+    await db
+      .update(writtenTable)
+      .set({
         title,
         prompt,
         guidance: guidance?.trim() || null,
-      },
-    });
+        updated_at: new Date(),
+      })
+      .where(eq(writtenTable.id, writtenId));
 
     revalidatePath(`/course/edit/${courseId}`);
     return { success: true };

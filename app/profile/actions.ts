@@ -2,7 +2,8 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
-import prisma from "@/prisma/client";
+import db from "@/db/client";
+import { user } from "@/db/schema";
 
 export type ProfileContextState = { ok: boolean; error?: string } | null;
 
@@ -26,11 +27,13 @@ export async function saveProfileContext(
     };
   }
 
-  await prisma.user.upsert({
-    where: { clerk_id: userId },
-    create: { clerk_id: userId, profile_context: raw || null },
-    update: { profile_context: raw || null },
-  });
+  await db
+    .insert(user)
+    .values({ clerk_id: userId, profile_context: raw || null })
+    .onConflictDoUpdate({
+      target: user.clerk_id,
+      set: { profile_context: raw || null, updated_at: new Date() },
+    });
 
   revalidatePath("/profile");
   revalidatePath("/");

@@ -13,15 +13,12 @@ import type { Components } from "react-markdown";
 import "highlight.js/styles/github-dark.css";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import type { Prisma } from "@prisma/client";
+import type { InferSelectModel } from "drizzle-orm";
+import type { slide as slideTable } from "@/db/schema";
 import { BookOpen, Check, Copy, Edit } from "lucide-react";
 import Link from "next/link";
 
-type SlideType = Prisma.SlideGetPayload<{
-  include: {
-    content_item: true;
-  };
-}>;
+type SlideType = InferSelectModel<typeof slideTable>;
 
 interface CodeProps extends HTMLAttributes<HTMLElement> {
   node?: unknown;
