@@ -1,7 +1,9 @@
 export const dynamic = "force-dynamic";
 
+import { and, desc, eq, isNull } from "drizzle-orm";
 import CourseList from "@/app/components/course/course-list";
-import prisma from "@/prisma/client";
+import db from "@/db/client";
+import { course as courseTable } from "@/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { BookOpen, FolderOpen, Layers, Plus } from "lucide-react";
 import Link from "next/link";
@@ -15,19 +17,22 @@ export default async function CoursePage() {
 
   // A guide is private to the person who made it: only their own guides
   // are ever listed here.
-  const courses = await prisma.course.findMany({
-    where: {
-      creator: userId,
-      deleted_at: null,
-    },
-    orderBy: { created_at: "desc" },
-    include: {
+  const courseRows = await db.query.course.findMany({
+    where: and(
+      eq(courseTable.creator, userId),
+      isNull(courseTable.deleted_at),
+    ),
+    orderBy: desc(courseTable.created_at),
+    with: {
       category: true,
-      _count: {
-        select: { modules: true },
-      },
+      modules: { columns: { id: true } },
     },
   });
+
+  const courses = courseRows.map((course) => ({
+    ...course,
+    _count: { modules: course.modules.length },
+  }));
 
   const categoryCount = new Set(courses.map((c) => c.category_id).filter(Boolean)).size;
   const moduleCount = courses.reduce((sum, c) => sum + c._count.modules, 0);

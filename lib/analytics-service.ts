@@ -1,6 +1,8 @@
 "use server";
 
-import prisma from "@/prisma/client";
+import { avg, count, eq, sql } from "drizzle-orm";
+import db from "@/db/client";
+import { category, course, enrollment, module, rating, user } from "@/db/schema";
 
 export interface AnalyticsData {
   totalUsers: number;
@@ -16,78 +18,72 @@ export interface AnalyticsData {
 
 export async function getAnalyticsData(): Promise<AnalyticsData> {
   // Get total counts
-  const [totalUsers, totalCourses, totalEnrollments, totalModules] = await Promise.all([
-    prisma.user.count(),
-    prisma.course.count(),
-    prisma.enrollment.count(),
-    prisma.module.count(),
+  const [
+    [usersCount],
+    [coursesCount],
+    [enrollmentsCount],
+    [modulesCount],
+  ] = await Promise.all([
+    db.select({ value: count() }).from(user),
+    db.select({ value: count() }).from(course),
+    db.select({ value: count() }).from(enrollment),
+    db.select({ value: count() }).from(module),
   ]);
 
   // Get average rating
-  const ratingsResult = await prisma.rating.aggregate({
-    _avg: {
-      rating: true,
-    },
-  });
-  const averageRating = ratingsResult._avg.rating || 0;
+  const [ratingsResult] = await db
+    .select({ average: avg(rating.rating) })
+    .from(rating);
+  const averageRating = Number(ratingsResult?.average ?? 0);
 
   // Get course creation trend (last 12 months)
-  const courseCreationTrend = await prisma.$queryRaw<Array<{ month: string; count: number }>>`
-    SELECT
-      TO_CHAR(created_at, 'YYYY-MM') as month,
-      COUNT(*) as count
-    FROM "Course"
-    WHERE created_at >= NOW() - INTERVAL '12 months'
-    GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-    ORDER BY month
-  `;
+  const courseCreationTrend = (
+    await db.execute(sql`
+      SELECT
+        TO_CHAR(created_at, 'YYYY-MM') as month,
+        COUNT(*)::int as count
+      FROM "Course"
+      WHERE created_at >= NOW() - INTERVAL '12 months'
+      GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+      ORDER BY month
+    `)
+  ).rows as { month: string; count: number }[];
 
   // Get enrollment trend (last 12 months)
-  const enrollmentTrend = await prisma.$queryRaw<Array<{ month: string; count: number }>>`
-    SELECT
-      TO_CHAR(enrolled_at, 'YYYY-MM') as month,
-      COUNT(*) as count
-    FROM "Enrollment"
-    WHERE enrolled_at >= NOW() - INTERVAL '12 months'
-    GROUP BY TO_CHAR(enrolled_at, 'YYYY-MM')
-    ORDER BY month
-  `;
+  const enrollmentTrend = (
+    await db.execute(sql`
+      SELECT
+        TO_CHAR(enrolled_at, 'YYYY-MM') as month,
+        COUNT(*)::int as count
+      FROM "Enrollment"
+      WHERE enrolled_at >= NOW() - INTERVAL '12 months'
+      GROUP BY TO_CHAR(enrolled_at, 'YYYY-MM')
+      ORDER BY month
+    `)
+  ).rows as { month: string; count: number }[];
 
   // Get category distribution
-  const categoryDistribution = await prisma.category.findMany({
-    select: {
-      name: true,
-      _count: {
-        select: {
-          courses: true,
-        },
-      },
-    },
-  });
+  const categoryDistribution = await db
+    .select({ name: category.name, count: count(course.id) })
+    .from(category)
+    .leftJoin(course, eq(course.category_id, category.id))
+    .groupBy(category.name);
 
   // Get user level distribution
-  const userLevelDistribution = await prisma.user.groupBy({
-    by: ['level'],
-    _count: {
-      level: true,
-    },
-  });
+  const userLevelDistribution = await db
+    .select({ level: user.level, count: count(user.level) })
+    .from(user)
+    .groupBy(user.level);
 
   return {
-    totalUsers,
-    totalCourses,
-    totalEnrollments,
-    totalModules,
+    totalUsers: usersCount.value,
+    totalCourses: coursesCount.value,
+    totalEnrollments: enrollmentsCount.value,
+    totalModules: modulesCount.value,
     averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
     courseCreationTrend,
     enrollmentTrend,
-    categoryDistribution: categoryDistribution.map(cat => ({
-      name: cat.name,
-      count: cat._count.courses,
-    })),
-    userLevelDistribution: userLevelDistribution.map(level => ({
-      level: level.level,
-      count: level._count.level,
-    })),
+    categoryDistribution,
+    userLevelDistribution,
   };
 }

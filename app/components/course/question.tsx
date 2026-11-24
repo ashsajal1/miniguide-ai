@@ -1,17 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Prisma } from "@prisma/client";
+import type { InferSelectModel } from "drizzle-orm";
+import type {
+  option as optionTable,
+  question as questionTable,
+} from "@/db/schema";
 import { Check, Edit, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import InlineMarkdown from "./inline-markdown";
 
-type QuestionWithOptions = Prisma.QuestionGetPayload<{
-  include: {
-    options: true;
-    content_item: true;
-  };
-}>;
+type QuestionWithOptions = InferSelectModel<typeof questionTable> & {
+  options: InferSelectModel<typeof optionTable>[];
+};
 
 interface QuestionProps {
   question: QuestionWithOptions;

@@ -1,4 +1,5 @@
-import prisma from "./client";
+import db from "./client";
+import { category } from "./schema";
 
 async function main() {
   // Create default categories
@@ -13,12 +14,14 @@ async function main() {
     { name: "Marketing", description: "Digital marketing and growth strategies" },
   ];
 
-  for (const category of categories) {
-    await prisma.category.upsert({
-      where: { name: category.name },
-      update: category,
-      create: category,
-    });
+  for (const item of categories) {
+    await db
+      .insert(category)
+      .values(item)
+      .onConflictDoUpdate({
+        target: category.name,
+        set: { description: item.description, updated_at: new Date() },
+      });
   }
 
   console.log("Categories seeded successfully!");
@@ -29,6 +32,6 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
+  .finally(() => {
+    process.exit(0);
   });

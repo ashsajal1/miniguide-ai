@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findUnique, auth } = vi.hoisted(() => ({
-  findUnique: vi.fn(),
+const { findFirst, auth } = vi.hoisted(() => ({
+  findFirst: vi.fn(),
   auth: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: () => auth() }));
-vi.mock("@/prisma/client", () => ({ default: { user: { findUnique } } }));
+vi.mock("@/db/client", () => ({ default: { query: { user: { findFirst } } } }));
 
 import {
   buildLearnerPromptContext,
@@ -15,7 +15,7 @@ import {
 
 describe("learner profile context", () => {
   beforeEach(() => {
-    findUnique.mockReset();
+    findFirst.mockReset();
     auth.mockReset();
   });
 
@@ -36,13 +36,12 @@ describe("learner profile context", () => {
 
   it("loads the signed-in learner's saved context", async () => {
     auth.mockResolvedValue({ userId: "user_1" });
-    findUnique.mockResolvedValue({ profile_context: "  Likes green.  " });
+    findFirst.mockResolvedValue({ profile_context: "  Likes green.  " });
 
     await expect(loadLearnerProfile()).resolves.toBe("Likes green.");
-    expect(findUnique).toHaveBeenCalledWith({
-      where: { clerk_id: "user_1" },
-      select: { profile_context: true },
-    });
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ columns: { profile_context: true } }),
+    );
   });
 
   it("returns an empty context when signed out or on failure", async () => {

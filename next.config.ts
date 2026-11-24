@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Keep Prisma out of Next's server bundle so the `workerd` export condition
-  // picks the edge client on Cloudflare and the node client everywhere else.
-  serverExternalPackages: ["@prisma/client", ".prisma/client"],
   images: {
     domains: [
       'localhost',

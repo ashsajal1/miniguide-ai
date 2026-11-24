@@ -3,7 +3,9 @@ export const dynamic = "force-dynamic";
 import { getAnalyticsData } from "@/lib/analytics-service";
 import { Suspense } from "react";
 import AdminDashboard from "./admin-dashboard";
-import prisma from "@/prisma/client";
+import { eq } from "drizzle-orm";
+import db from "@/db/client";
+import { user as userTable } from "@/db/schema";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
@@ -14,8 +16,8 @@ export default async function AdminPage() {
     redirect("/");
   }
 
-  const user = await prisma.user.findUnique({
-    where: { clerk_id: userId },
+  const user = await db.query.user.findFirst({
+    where: eq(userTable.clerk_id, userId),
   });
 
   if (!user || user.role !== "ADMIN") {

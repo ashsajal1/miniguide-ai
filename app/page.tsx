@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
-import prisma from "@/prisma/client";
+import { and, desc, eq, isNull } from "drizzle-orm";
+import db from "@/db/client";
+import { course as courseTable, user as userTable } from "@/db/schema";
 import {
   ArrowRight,
   BookOpen,
@@ -87,18 +89,26 @@ export default async function Home() {
     );
   }
 
-  const [dbUser, guides] = await Promise.all([
-    prisma.user.findUnique({
-      where: { clerk_id: user.id },
-      select: { profile_context: true },
+  const [dbUser, guideRows] = await Promise.all([
+    db.query.user.findFirst({
+      where: eq(userTable.clerk_id, user.id),
+      columns: { profile_context: true },
     }),
-    prisma.course.findMany({
-      where: { creator: user.id, deleted_at: null },
-      orderBy: { created_at: "desc" },
-      take: 6,
-      include: { _count: { select: { modules: true } } },
+    db.query.course.findMany({
+      where: and(
+        eq(courseTable.creator, user.id),
+        isNull(courseTable.deleted_at),
+      ),
+      orderBy: desc(courseTable.created_at),
+      limit: 6,
+      with: { modules: { columns: { id: true } } },
     }),
   ]);
+
+  const guides = guideRows.map((guide) => ({
+    ...guide,
+    _count: { modules: guide.modules.length },
+  }));
 
   const hasContext = Boolean(dbUser?.profile_context?.trim());
 

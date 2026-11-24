@@ -1,7 +1,17 @@
 "use server";
 
-import { Prisma, ContentType } from "@prisma/client";
-import prisma from "@/prisma/client";
+import { and, asc, desc, eq, notInArray } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  course as courseTable,
+  module as moduleTable,
+  option as optionTable,
+  question as questionTable,
+  slide as slideTable,
+  written as writtenTable,
+  type ContentType,
+} from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { auth } from "@clerk/nextjs/server";
 
@@ -10,21 +20,21 @@ async function verifyCourseOwner(courseId: string) {
   const { userId } = await auth();
   if (!userId) return false;
 
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { creator: true },
+  const found = await db.query.course.findFirst({
+    where: eq(courseTable.id, courseId),
+    columns: { creator: true },
   });
 
-  return course?.creator === userId;
+  return found?.creator === userId;
 }
 
 async function verifyModuleOwner(moduleId: string) {
   const { userId } = await auth();
   if (!userId) return false;
 
-  const courseModule = await prisma.module.findUnique({
-    where: { id: moduleId },
-    select: { course: { select: { creator: true } } },
+  const courseModule = await db.query.module.findFirst({
+    where: eq(moduleTable.id, moduleId),
+    with: { course: { columns: { creator: true } } },
   });
 
   return courseModule?.course.creator === userId;
@@ -34,36 +44,36 @@ async function verifySlideOwner(slideId: string) {
   const { userId } = await auth();
   if (!userId) return false;
 
-  const slide = await prisma.slide.findUnique({
-    where: { id: slideId },
-    select: { module: { select: { course: { select: { creator: true } } } } },
+  const found = await db.query.slide.findFirst({
+    where: eq(slideTable.id, slideId),
+    with: { module: { with: { course: { columns: { creator: true } } } } },
   });
 
-  return slide?.module.course.creator === userId;
+  return found?.module.course.creator === userId;
 }
 
 async function verifyQuestionOwner(questionId: string) {
   const { userId } = await auth();
   if (!userId) return false;
 
-  const question = await prisma.question.findUnique({
-    where: { id: questionId },
-    select: { module: { select: { course: { select: { creator: true } } } } },
+  const found = await db.query.question.findFirst({
+    where: eq(questionTable.id, questionId),
+    with: { module: { with: { course: { columns: { creator: true } } } } },
   });
 
-  return question?.module.course.creator === userId;
+  return found?.module.course.creator === userId;
 }
 
 async function verifyWrittenOwner(writtenId: string) {
   const { userId } = await auth();
   if (!userId) return false;
 
-  const written = await prisma.written.findUnique({
-    where: { id: writtenId },
-    select: { module: { select: { course: { select: { creator: true } } } } },
+  const found = await db.query.written.findFirst({
+    where: eq(writtenTable.id, writtenId),
+    with: { module: { with: { course: { columns: { creator: true } } } } },
   });
 
-  return written?.module.course.creator === userId;
+  return found?.module.course.creator === userId;
 }
 
 // Module Actions
@@ -74,12 +84,10 @@ export async function createModule(courseId: string, title: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const newMdoule = await prisma.module.create({
-      data: {
-        title,
-        course_id: courseId,
-      },
-    });
+    const [newMdoule] = await db
+      .insert(moduleTable)
+      .values({ title, course_id: courseId })
+      .returning();
     revalidatePath(`/course/edit/${courseId}`);
     return { success: true, newMdoule };
   } catch {
@@ -94,11 +102,11 @@ export async function updateQuestionContent(questionId: string, content: string)
       return { success: false, error: "Unauthorized" };
     }
 
-    const question = await prisma.question.update({
-      where: { id: questionId },
-      data: { content },
-      include: { module: true },
-    });
+    const [question] = await db
+      .update(questionTable)
+      .set({ content, updated_at: new Date() })
+      .where(eq(questionTable.id, questionId))
+      .returning();
     revalidatePath(`/course/edit/module/${question.module_id}`);
     return { success: true, question };
   } catch {
@@ -113,10 +121,11 @@ export async function updateModule(moduleId: string, title: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const updatedModule = await prisma.module.update({
-      where: { id: moduleId },
-      data: { title },
-    });
+    const [updatedModule] = await db
+      .update(moduleTable)
+      .set({ title, updated_at: new Date() })
+      .where(eq(moduleTable.id, moduleId))
+      .returning();
     revalidatePath(`/course/edit/${updatedModule.course_id}`);
     return { success: true, module: updatedModule };
   } catch {
@@ -132,18 +141,16 @@ export async function deleteModule(moduleId: string) {
     }
 
     // First get the module to get course_id for revalidation
-    const deletedModule = await prisma.module.findUnique({
-      where: { id: moduleId },
-      select: { course_id: true },
+    const deletedModule = await db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { course_id: true },
     });
 
     if (!deletedModule) {
       return { success: false, error: "Module not found" };
     }
 
-    await prisma.module.delete({
-      where: { id: moduleId },
-    });
+    await db.delete(moduleTable).where(eq(moduleTable.id, moduleId));
 
     revalidatePath(`/course/edit/${deletedModule.course_id}`);
     return { success: true };
@@ -153,9 +160,9 @@ export async function deleteModule(moduleId: string) {
 }
 
 // Slide Actions
-type SlideWithContentItem = Prisma.SlideGetPayload<{
-  include: { content_item: true };
-}>;
+type SlideWithContentItem = typeof slideTable.$inferSelect & {
+  content_item: typeof contentTable.$inferSelect;
+};
 
 export async function createSlide(
   moduleId: string,
@@ -173,35 +180,35 @@ export async function createSlide(
       return { success: false, error: "Unauthorized" };
     }
 
-    // First create the content item
-    const contentItem = await prisma.content.create({
-      data: {
-        type: ContentType.SLIDE,
-        module_id: moduleId,
-        order: await getNextOrder(moduleId),
-      },
-    });
-
-    // Then create the slide with the content_item_id
-    const slide = await prisma.slide.create({
-      data: {
-        title: title,
-        content: content,
-        module_id: moduleId,
-        content_item_id: contentItem.id,
-        references,
-      },
-      include: {
-        content_item: true,
-      },
-    });
+    const contentId = crypto.randomUUID();
+    const [contentRows, slideRows] = await db.batch([
+      db
+        .insert(contentTable)
+        .values({
+          id: contentId,
+          type: "SLIDE",
+          module_id: moduleId,
+          order: await getNextOrder(moduleId),
+        })
+        .returning(),
+      db
+        .insert(slideTable)
+        .values({
+          title: title,
+          content: content,
+          module_id: moduleId,
+          content_item_id: contentId,
+          references,
+        })
+        .returning(),
+    ]);
 
     revalidatePath(`/course/edit/module/${moduleId}`);
     return {
       success: true,
       slide: {
-        ...slide,
-        content_item: contentItem,
+        ...slideRows[0],
+        content_item: contentRows[0],
       },
     };
   } catch (error) {
@@ -225,11 +232,11 @@ export async function updateSlide(
       return { success: false, error: "Unauthorized" };
     }
 
-    const updatedSlide = await prisma.slide.update({
-      where: { id: slideId },
-      data: { title, content, references },
-      include: { module: true },
-    });
+    const [updatedSlide] = await db
+      .update(slideTable)
+      .set({ title, content, references, updated_at: new Date() })
+      .where(eq(slideTable.id, slideId))
+      .returning();
 
     revalidatePath(`/course/edit/module/${updatedSlide.module_id}`);
     return { success: true, slide: updatedSlide };
@@ -246,19 +253,19 @@ export async function deleteSlide(slideId: string) {
     }
 
     // First get the slide to get module_id for revalidation
-    const slide = await prisma.slide.findUnique({
-      where: { id: slideId },
-      include: { content_item: true },
+    const slide = await db.query.slide.findFirst({
+      where: eq(slideTable.id, slideId),
+      columns: { module_id: true, content_item_id: true },
     });
 
     if (!slide) {
       return { success: false, error: "Slide not found" };
     }
 
-    // Delete the slide and its associated content item in a transaction
-    await prisma.$transaction([
-      prisma.slide.delete({ where: { id: slideId } }),
-      prisma.content.delete({ where: { id: slide.content_item_id } }),
+    // Delete the slide and its associated content item together
+    await db.batch([
+      db.delete(slideTable).where(eq(slideTable.id, slideId)),
+      db.delete(contentTable).where(eq(contentTable.id, slide.content_item_id)),
     ]);
 
     revalidatePath(`/course/edit/module/${slide.module_id}`);
@@ -286,39 +293,54 @@ export async function createQuestion(
       return { success: false, error: "Unauthorized" };
     }
 
-    // First create the content item
-    const contentItem = await prisma.content.create({
-      data: {
-        type: ContentType.QUESTION,
-        module_id: moduleId,
-        order: await getNextOrder(moduleId),
-      },
+    const contentId = crypto.randomUUID();
+    const questionId = crypto.randomUUID();
+    const optionsData = options.map((opt) => ({
+      id: crypto.randomUUID(),
+      questionId,
+      text: opt.text,
+      isCorrect: opt.isCorrect,
+      explanation: opt.explanation || null,
+    }));
+
+    const [contentRows, questionRows, optionRows] = await db.batch([
+      db
+        .insert(contentTable)
+        .values({
+          id: contentId,
+          type: "QUESTION",
+          module_id: moduleId,
+          order: await getNextOrder(moduleId),
+        })
+        .returning(),
+      db
+        .insert(questionTable)
+        .values({
+          id: questionId,
+          title,
+          content: question,
+          module_id: moduleId,
+          content_item_id: contentId,
+        })
+        .returning(),
+      db.insert(optionTable).values(optionsData).returning(),
+    ]);
+
+    const courseModule = await db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { course_id: true },
     });
 
-    // Create the question with options
-    const questionRecord = await prisma.question.create({
-      data: {
-        title,
-        content: question,
-        module_id: moduleId,
-        content_item_id: contentItem.id,
-        options: {
-          create: options.map((opt) => ({
-            text: opt.text,
-            isCorrect: opt.isCorrect,
-            explanation: opt.explanation || null,
-          })),
-        },
+    revalidatePath(`/course/edit/module/${courseModule?.course_id ?? moduleId}`);
+    return {
+      success: true,
+      question: {
+        ...questionRows[0],
+        options: optionRows,
+        content_item: contentRows[0],
       },
-      include: {
-        options: true,
-        module: true,
-      },
-    });
-
-    revalidatePath(`/course/edit/module/${moduleId}`);
-    return { success: true, question: questionRecord };
-  } catch{
+    };
+  } catch {
     return { success: false, error: "Failed to create question" };
   }
 }
@@ -341,16 +363,14 @@ export async function updateQuestion(
     }
 
     // First update the question
-    const question = await prisma.question.update({
-      where: { id: questionId },
-      data: { content, title },
-      include: { module: true },
-    });
+    const [question] = await db
+      .update(questionTable)
+      .set({ content, title, updated_at: new Date() })
+      .where(eq(questionTable.id, questionId))
+      .returning();
 
-    // Then update options (delete all and recreate for simplicity)
-    await prisma.option.deleteMany({
-      where: { questionId: questionId },
-    });
+    // Then replace options (delete all and recreate for simplicity)
+    await db.delete(optionTable).where(eq(optionTable.questionId, questionId));
 
     const optionsArr = options.map((opt) => ({
       questionId: questionId,
@@ -358,9 +378,9 @@ export async function updateQuestion(
       isCorrect: opt.isCorrect,
       explanation: opt.explanation || null,
     }));
-    await prisma.option.createMany({
-      data: optionsArr,
-    });
+    if (optionsArr.length > 0) {
+      await db.insert(optionTable).values(optionsArr);
+    }
 
     revalidatePath(`/course/edit/module/${question.module_id}`);
     return { success: true, question };
@@ -377,20 +397,20 @@ export async function deleteQuestion(questionId: string) {
     }
 
     // First get the question to get module_id for revalidation
-    const question = await prisma.question.findUnique({
-      where: { id: questionId },
-      include: { content_item: true },
+    const question = await db.query.question.findFirst({
+      where: eq(questionTable.id, questionId),
+      columns: { module_id: true, content_item_id: true },
     });
 
     if (!question) {
       return { success: false, error: "Question not found" };
     }
 
-    // Delete the question, its options, and associated content item in a transaction
-    await prisma.$transaction([
-      prisma.option.deleteMany({ where: { questionId } }),
-      prisma.question.delete({ where: { id: questionId } }),
-      prisma.content.delete({ where: { id: question.content_item_id! } }), // Non-null assertion as we know it exists
+    // Delete the question, its options, and associated content item together
+    await db.batch([
+      db.delete(optionTable).where(eq(optionTable.questionId, questionId)),
+      db.delete(questionTable).where(eq(questionTable.id, questionId)),
+      db.delete(contentTable).where(eq(contentTable.id, question.content_item_id!)),
     ]);
 
     revalidatePath(`/course/edit/module/${question.module_id}`);
@@ -415,32 +435,35 @@ export async function createWritten(
     }
 
     const order = await getNextOrder(moduleId);
-    const { written, contentItem } = await prisma.$transaction(async (tx) => {
-      const contentItem = await tx.content.create({
-        data: {
-          type: ContentType.WRITTEN,
+    const contentId = crypto.randomUUID();
+    const [contentRows, writtenRows] = await db.batch([
+      db
+        .insert(contentTable)
+        .values({
+          id: contentId,
+          type: "WRITTEN" satisfies ContentType,
           module_id: moduleId,
           order,
-        },
-      });
-      const written = await tx.written.create({
-        data: {
+        })
+        .returning(),
+      db
+        .insert(writtenTable)
+        .values({
           title,
           prompt,
           guidance: guidance?.trim() || null,
           module_id: moduleId,
-          content_item_id: contentItem.id,
-        },
-      });
-      return { written, contentItem };
-    });
+          content_item_id: contentId,
+        })
+        .returning(),
+    ]);
 
     revalidatePath(`/course/edit/module/${moduleId}`);
     return {
       success: true,
       written: {
-        ...written,
-        content_item: contentItem,
+        ...writtenRows[0],
+        content_item: contentRows[0],
       },
     };
   } catch (error) {
@@ -465,15 +488,16 @@ export async function updateWritten(
       return { success: false, error: "Unauthorized" };
     }
 
-    const written = await prisma.written.update({
-      where: { id: writtenId },
-      data: {
+    const [written] = await db
+      .update(writtenTable)
+      .set({
         title,
         prompt,
         guidance: guidance?.trim() || null,
-      },
-      include: { module: true },
-    });
+        updated_at: new Date(),
+      })
+      .where(eq(writtenTable.id, writtenId))
+      .returning();
 
     revalidatePath(`/course/edit/module/${written.module_id}`);
     return { success: true, written };
@@ -490,9 +514,9 @@ export async function deleteWritten(writtenId: string) {
       return { success: false, error: "Unauthorized" };
     }
 
-    const written = await prisma.written.findUnique({
-      where: { id: writtenId },
-      select: { module_id: true, content_item_id: true },
+    const written = await db.query.written.findFirst({
+      where: eq(writtenTable.id, writtenId),
+      columns: { module_id: true, content_item_id: true },
     });
 
     if (!written) {
@@ -500,9 +524,9 @@ export async function deleteWritten(writtenId: string) {
     }
 
     // Submissions cascade with the written row; the content item must go too.
-    await prisma.$transaction([
-      prisma.written.delete({ where: { id: writtenId } }),
-      prisma.content.delete({ where: { id: written.content_item_id } }),
+    await db.batch([
+      db.delete(writtenTable).where(eq(writtenTable.id, writtenId)),
+      db.delete(contentTable).where(eq(contentTable.id, written.content_item_id)),
     ]);
 
     revalidatePath(`/course/edit/module/${written.module_id}`);
@@ -515,10 +539,10 @@ export async function deleteWritten(writtenId: string) {
 
 // Helper function to get the next order number for content items
 async function getNextOrder(moduleId: string): Promise<number> {
-  const lastItem = await prisma.content.findFirst({
-    where: { module_id: moduleId },
-    orderBy: { order: "desc" },
-    select: { order: true },
+  const lastItem = await db.query.content.findFirst({
+    where: eq(contentTable.module_id, moduleId),
+    orderBy: desc(contentTable.order),
+    columns: { order: true },
   });
 
   return (lastItem?.order || 0) + 1;
@@ -534,19 +558,22 @@ export async function reorderContent(moduleId: string, contentIds: string[]) {
       return { success: false, error: "Unauthorized" };
     }
 
-    await prisma.$transaction(
-      contentIds.map((id, index) =>
-        prisma.content.update({
-          where: { id },
-          data: { order: index },
-        })
-      )
-    );
+    if (contentIds.length > 0) {
+      const updates = contentIds.map((id, index) =>
+        db
+          .update(contentTable)
+          .set({ order: index, updated_at: new Date() })
+          .where(and(eq(contentTable.id, id), eq(contentTable.module_id, moduleId)))
+      );
+      await db.batch(
+        updates as [typeof updates[number], ...typeof updates[number][]]
+      );
+    }
 
     // Get courseId for revalidation
-    const courseModule = await prisma.module.findUnique({
-      where: { id: moduleId },
-      select: { course_id: true },
+    const courseModule = await db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { course_id: true },
     });
 
     console.log("reorderContent success");
@@ -569,14 +596,17 @@ export async function reorderModules(courseId: string, moduleIds: string[]) {
       return { success: false, error: "Unauthorized" };
     }
 
-    await prisma.$transaction(
-      moduleIds.map((id, index) =>
-        prisma.module.update({
-          where: { id },
-          data: { order: index },
-        })
-      )
-    );
+    if (moduleIds.length > 0) {
+      const updates = moduleIds.map((id, index) =>
+        db
+          .update(moduleTable)
+          .set({ order: index, updated_at: new Date() })
+          .where(eq(moduleTable.id, id))
+      );
+      await db.batch(
+        updates as [typeof updates[number], ...typeof updates[number][]]
+      );
+    }
 
     console.log("reorderModules success");
     revalidatePath(`/course/edit/${courseId}`);
@@ -594,10 +624,10 @@ export async function updateCourseStatus(courseId: string, isPublic: boolean) {
       return { success: false, error: "Unauthorized" };
     }
 
-    await prisma.course.update({
-      where: { id: courseId },
-      data: { isPublic },
-    });
+    await db
+      .update(courseTable)
+      .set({ isPublic, updated_at: new Date() })
+      .where(eq(courseTable.id, courseId));
     revalidatePath(`/course/edit/${courseId}`);
     return { success: true };
   } catch (error) {

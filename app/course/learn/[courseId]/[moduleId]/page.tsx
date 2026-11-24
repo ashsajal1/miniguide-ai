@@ -1,6 +1,18 @@
-import prisma from "@/prisma/client";
-import { ContentType } from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import type { InferSelectModel } from "drizzle-orm";
+import db from "@/db/client";
+import {
+  content as contentTable,
+  course as courseTable,
+  module as moduleTable,
+  option as optionTable,
+  question as questionTable,
+  slide as slideTable,
+  user as userTable,
+  userModuleProgress as progressTable,
+  written as writtenTable,
+  writtenSubmission as submissionTable,
+} from "@/db/schema";
 import type { Metadata } from "next";
 import LearnModuleView from "./learn-module-view";
 import { getUserModuleProgress } from "./actions";
@@ -17,13 +29,13 @@ export async function generateMetadata({
 
   const { userId } = await auth();
   const [course, module] = await Promise.all([
-    prisma.course.findUnique({
-      where: { id: courseId },
-      select: { name: true, creator: true },
+    db.query.course.findFirst({
+      where: eq(courseTable.id, courseId),
+      columns: { name: true, creator: true },
     }),
-    prisma.module.findUnique({
-      where: { id: moduleId },
-      select: { title: true },
+    db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { title: true },
     }),
   ]);
 
@@ -39,27 +51,24 @@ export async function generateMetadata({
   };
 }
 
-// This creates a type that includes the relations
-export type ContentWithRelations = Prisma.ContentGetPayload<{
-  include: {
-    slide: {
-      include: {
-        content_item: true;
-      };
-    };
-    question: {
-      include: {
-        options: true;
-        content_item: true;
-      };
-    };
-    written: {
-      include: {
-        submissions: true;
-      };
-    };
-  };
-}>;
+type ContentRow = InferSelectModel<typeof contentTable>;
+type SlideRow = InferSelectModel<typeof slideTable>;
+type QuestionRow = InferSelectModel<typeof questionTable>;
+type OptionRow = InferSelectModel<typeof optionTable>;
+type WrittenRow = InferSelectModel<typeof writtenTable>;
+type SubmissionRow = InferSelectModel<typeof submissionTable>;
+
+// This is the shape the learning view consumes, with the relations loaded.
+export type ContentWithRelations = ContentRow & {
+  slide: (SlideRow & { content_item: ContentRow | null }) | null;
+  question:
+    | (QuestionRow & {
+        options: OptionRow[];
+        content_item: ContentRow | null;
+      })
+    | null;
+  written: (WrittenRow & { submissions: SubmissionRow[] }) | null;
+};
 
 export default async function Page({
   params,
@@ -71,80 +80,64 @@ export default async function Page({
   const { userId } = await auth();
 
   // Guides are private: only the creator can open their modules.
-  const courseOwner = await prisma.course.findUnique({
-    where: { id: courseId },
-    select: { creator: true },
+  const courseOwner = await db.query.course.findFirst({
+    where: eq(courseTable.id, courseId),
+    columns: { creator: true },
   });
   if (!courseOwner || courseOwner.creator !== userId) {
     notFound();
   }
 
   const viewer = userId
-    ? await prisma.user.findUnique({
-        where: { clerk_id: userId },
-        select: { id: true },
+    ? await db.query.user.findFirst({
+        where: eq(userTable.clerk_id, userId),
+        columns: { id: true },
       })
     : null;
 
-  const moduleContent = await prisma.content.findMany({
-    where: {
-      module_id: moduleId,
-      type: {
-        in: [ContentType.SLIDE, ContentType.QUESTION, ContentType.WRITTEN],
-      },
-    },
-    include: {
+  const moduleContent = (await db.query.content.findMany({
+    where: eq(contentTable.module_id, moduleId),
+    with: {
       slide: {
-        include: {
-          content_item: true,
-        },
+        with: { content_item: true },
       },
       question: {
-        include: {
-          options: true,
-          content_item: true,
-        },
+        with: { options: true, content_item: true },
       },
       written: {
-        include: {
+        with: {
           submissions: {
-            where: { user_id: viewer?.id ?? "__none__" },
-            orderBy: { updated_at: "desc" },
-            take: 1,
+            where: eq(submissionTable.user_id, viewer?.id ?? "__none__"),
+            orderBy: desc(submissionTable.updated_at),
+            limit: 1,
           },
         },
       },
     },
-    orderBy: {
-      order: "asc",
-    },
-  });
+    orderBy: asc(contentTable.order),
+  })) as ContentWithRelations[];
 
   const [course, currentModule] = await Promise.all([
-    prisma.course.findUnique({
-      where: { id: courseId },
-      select: { creator: true, name: true },
+    db.query.course.findFirst({
+      where: eq(courseTable.id, courseId),
+      columns: { creator: true, name: true },
     }),
-    prisma.module.findUnique({
-      where: { id: moduleId },
-      select: { title: true },
+    db.query.module.findFirst({
+      where: eq(moduleTable.id, moduleId),
+      columns: { title: true },
     }),
   ]);
 
   const isCreator = course?.creator === userId;
 
   // Fetch all modules to determine the next module
-  const courseModules = await prisma.module.findMany({
-    where: {
-      course_id: courseId,
-      deleted_at: null,
-    },
-    select: {
-      id: true,
-    },
-    orderBy: {
-      created_at: "asc",
-    },
+  const courseModules = await db.query.module.findMany({
+    where: and(
+      eq(moduleTable.course_id, courseId),
+      isNull(moduleTable.deleted_at),
+    ),
+    columns: { id: true },
+    orderBy: asc(moduleTable.created_at),
   });
 
   const currentModuleIndex = courseModules.findIndex((m) => m.id === moduleId);
@@ -157,34 +150,31 @@ export default async function Page({
 
   // Check if all modules in the course are completed, and mark course as completed if so
   if (progress.isCompleted) {
-    const courseModules = await prisma.module.findMany({
-      where: {
-        course_id: courseId,
-      },
-      select: {
-        id: true,
-      },
+    const allCourseModules = await db.query.module.findMany({
+      where: eq(moduleTable.course_id, courseId),
+      columns: { id: true },
     });
 
     const { userId: clerkId } = await auth();
-    if (clerkId) {
-      const user = await prisma.user.findUnique({
-        where: { clerk_id: clerkId },
+    if (clerkId && allCourseModules.length > 0) {
+      const user = await db.query.user.findFirst({
+        where: eq(userTable.clerk_id, clerkId),
       });
 
       if (user) {
-        const userProgress = await prisma.userModuleProgress.findMany({
-          where: {
-            user_id: user.id,
-            module_id: {
-              in: courseModules.map((m) => m.id),
-            },
-          },
+        const userProgress = await db.query.userModuleProgress.findMany({
+          where: and(
+            eq(progressTable.user_id, user.id),
+            inArray(
+              progressTable.module_id,
+              allCourseModules.map((m) => m.id),
+            ),
+          ),
         });
 
         // If all modules are completed, mark the course as completed
         if (
-          userProgress.length === courseModules.length &&
+          userProgress.length === allCourseModules.length &&
           userProgress.every((p) => p.is_completed)
         ) {
           try {
@@ -200,7 +190,7 @@ export default async function Page({
   return (
     <div>
       <LearnModuleView
-        moduleContent={moduleContent!}
+        moduleContent={moduleContent}
         moduleId={moduleId}
         courseId={courseId}
         courseName={course?.name ?? "Course"}

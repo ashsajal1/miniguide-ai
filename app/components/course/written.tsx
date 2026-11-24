@@ -3,7 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Prisma } from "@prisma/client";
+import type { InferSelectModel } from "drizzle-orm";
+import type {
+  written as writtenTable,
+  writtenSubmission as submissionTable,
+} from "@/db/schema";
 import { Check, PenLine, RotateCcw, Sparkles } from "lucide-react";
 import {
   submitWrittenResponse,
@@ -11,9 +15,9 @@ import {
 } from "@/app/course/learn/[courseId]/[moduleId]/actions";
 import InlineMarkdown from "./inline-markdown";
 
-type WrittenWithSubmission = Prisma.WrittenGetPayload<{
-  include: { submissions: true };
-}>;
+type WrittenWithSubmission = InferSelectModel<typeof writtenTable> & {
+  submissions: InferSelectModel<typeof submissionTable>[];
+};
 
 const MIN_ANSWER = 40;
 const MAX_ANSWER = 2000;
