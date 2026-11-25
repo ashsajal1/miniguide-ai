@@ -22,9 +22,12 @@ interface GeneratedMCQ {
   options: MCQOption[];
 }
 
+export type QuestionFormat = "mcq" | "truefalse" | "mixed";
+
 export async function generateMCQFromSlide(
   slideContent: string,
-  scope?: AiScope
+  scope?: AiScope,
+  format: QuestionFormat = "mcq"
 ) {
   if (!isAiConfigured()) {
     return {
@@ -83,8 +86,18 @@ QUESTION TYPES TO CONSIDER:
 - **Critical Thinking**: Test evaluation and synthesis of ideas
 
 OPTIONS GUIDELINES:
-- Create 3-4 options (never 2 - that's too easy)
-- One clearly correct answer
+${
+  format === "truefalse"
+    ? `- Create exactly 2 options, worded exactly "True" and "False", with one of them correct
+- Phrase the question as a clear statement about the slide that the learner judges true or false`
+    : format === "mixed"
+      ? `- Default to a 3-4 option multiple choice question; most slides deserve MCQ
+- Use true/false only when the slide's core point is one clear binary claim the learner should judge (a definition, a rule, a common misconception), never for a process, comparison, or example
+- True/false: exactly 2 options, worded exactly "True" and "False", one correct
+- Multiple choice: 3-4 options, one clearly correct`
+      : `- Create 3-4 options (never 2 - that's too easy)
+- One clearly correct answer`
+}
 - Wrong answers should be based on real mistakes students make
 - All options should be similar in length and style
 - Avoid absolute terms like "always" or "never" unless truly accurate
@@ -94,20 +107,30 @@ EXPLANATIONS:
 - Wrong answers: Explain WHY it's wrong and address the misconception
 - Use explanations to teach additional context and learning
 
-OUTPUT FORMAT (JSON only, no markdown):
+OUTPUT FORMAT (JSON only, no markdown). "options" holds 3-4 entries for multiple choice, or exactly 2 ("True" and "False") for true/false:
 {
   "title": "Descriptive title of what the question tests (e.g., 'Understanding React Hooks', 'Database Normalization Principles')",
   "question": "Clear, well-written question that tests understanding (not just recall)",
   "options": [
+    {
+      "text": "The correct option text",
+      "isCorrect": true,
+      "explanation": "Explanation of why this is correct and reinforcement of the key concept"
+    },
     {
       "text": "Option text that could plausibly be correct",
       "isCorrect": false,
       "explanation": "Educational explanation of why this is incorrect and what the misconception is"
     },
     {
-      "text": "The correct option text",
-      "isCorrect": true,
-      "explanation": "Explanation of why this is correct and reinforcement of the key concept"
+      "text": "Another plausible wrong option",
+      "isCorrect": false,
+      "explanation": "Educational explanation of why this is incorrect"
+    },
+    {
+      "text": "A third plausible wrong option",
+      "isCorrect": false,
+      "explanation": "Educational explanation of why this is incorrect"
     }
   ]
 }
@@ -116,7 +139,13 @@ Return ONLY valid JSON, no additional text or formatting.
 
 ${stateContextBlock}`.trimEnd();
 
-    const userPrompt = `Based on the following slide content, create an MCQ question:
+    const userPrompt = `Based on the following slide content, create a ${
+      format === "truefalse"
+        ? "true/false"
+        : format === "mixed"
+          ? "true/false or multiple choice"
+          : "multiple choice"
+    } question:
 
 ${material}`;
 

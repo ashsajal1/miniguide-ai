@@ -4,7 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import db from "@/db/client";
 import { content, course as courseTable, module as moduleTable, option, question, slide, written } from "@/db/schema";
 import { CourseOutline, ModuleOutline } from "@/lib/course-ai-service";
-import { generateSlideContent } from "@/app/course/edit/[id]/slide/ai-actions";
+import { generateSlideContent, generateSlideWithQuestion } from "@/app/course/edit/[id]/slide/ai-actions";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
 import {
   generateWrittenTask,
@@ -177,115 +177,73 @@ export async function createCourseFromOutline(
       // written task cannot collide the way a stride of 10 would.
       const orderCursor: OrderCursor = { next: 0 };
 
-      // Generate slides for this module (or use provided ones)
-      let slides: GeneratedSlide[];
+      // Every slide is followed by a check-your-understanding question, unless
+      // the outline already carries hand-written questions for this module.
+      const hasProvidedQuestions = Boolean(moduleOutline.questions?.length);
+      const askQuestion = !hasProvidedQuestions;
+
+      let slides: GeneratedSlide[] = [];
+      let questions: GeneratedQuestion[] = [];
+
       if (moduleOutline.slides && moduleOutline.slides.length > 0) {
-        // Use provided slides
-        slides = [];
+        // Use provided slides; each still gets its own generated question.
         for (let j = 0; j < moduleOutline.slides.length; j++) {
           const slideOutline = moduleOutline.slides[j];
+          const savedSlide = await saveSlide(
+            slideOutline.title,
+            slideOutline.content,
+            moduleId,
+            moduleOutline,
+            aiScope,
+            orderCursor,
+            `Slide ${j + 1}`
+          );
+          slides.push(savedSlide);
 
-          // Create content relationship first
-          const [contentItem] = await db.insert(content).values({
-            type: 'SLIDE',
-            order: orderCursor.next++,
-            module_id: moduleId,
-          }).returning();
-
-          // Create slide in database
-          const [slideRecord] = await db.insert(slide).values({
-            title: slideOutline.title,
-            content: slideOutline.content,
-            module_id: moduleId,
-            content_item_id: contentItem.id,
-          }).returning();
-
-          slides.push({
-            id: slideRecord.id,
-            title: slideRecord.title ?? `Slide ${j + 1}`,
-            content: slideRecord.content,
-            order: contentItem.order,
-          });
-
-          generationState.slides!.push({
-            module: moduleOutline.title,
-            title: slideRecord.title ?? `Slide ${j + 1}`,
-          });
+          const question = askQuestion
+            ? await generateQuestionForSlide(
+                savedSlide,
+                moduleId,
+                moduleOutline,
+                aiScope,
+                orderCursor
+              )
+            : null;
+          if (question) questions.push(question);
         }
       } else {
         // Generate slides using AI
-        slides = await generateSlidesForModule(
+        const generated = await generateSlidesForModule(
           moduleOutline,
           moduleId,
           aiScope,
-          orderCursor
+          orderCursor,
+          askQuestion
         );
+        slides = generated.slides;
+        questions = generated.questions;
       }
       generatedModule.slides = slides;
 
-      // Generate questions for this module (or use provided ones)
-      let questions: GeneratedQuestion[];
-      if (moduleOutline.questions && moduleOutline.questions.length > 0) {
-        // Use provided questions
-        questions = [];
-        for (let j = 0; j < moduleOutline.questions.length; j++) {
-          const questionOutline = moduleOutline.questions[j];
-
-          // Create content relationship first
-          const [questionContentItem] = await db.insert(content).values({
-            type: 'QUESTION',
-            order: orderCursor.next++,
-            module_id: moduleId,
-          }).returning();
-
-          // Create question in database
-          const [questionRecord] = await db.insert(question).values({
-            title: questionOutline.title,
-            content: questionOutline.content,
-            module_id: moduleId,
-            content_item_id: questionContentItem.id,
-          }).returning();
-
-          // Create options
-          const questionOptions: QuestionOption[] = [];
-          for (const optionData of questionOutline.options) {
-            const [createdOption] = await db.insert(option).values({
-              text: optionData.text,
-              isCorrect: optionData.isCorrect,
-              explanation: optionData.explanation || "",
-              questionId: questionRecord.id,
-            }).returning();
-
-            questionOptions.push({
-              id: createdOption.id,
-              text: createdOption.text,
-              isCorrect: createdOption.isCorrect,
-              explanation: createdOption.explanation ?? "",
-            });
-          }
-
-          questions.push({
-            id: questionRecord.id,
-            title: questionRecord.title ?? `Question ${j + 1}`,
-            question: questionRecord.content,
-            options: questionOptions,
-            order: questionContentItem.order,
-          });
-
+      if (hasProvidedQuestions) {
+        for (let j = 0; j < moduleOutline.questions!.length; j++) {
+          const questionOutline = moduleOutline.questions![j];
+          const savedQuestion = await saveQuestion(
+            {
+              title: questionOutline.title,
+              question: questionOutline.content,
+              options: questionOutline.options,
+            },
+            moduleId,
+            orderCursor,
+            `Question ${j + 1}`
+          );
+          questions.push(savedQuestion);
           generationState.questions!.push({
             module: moduleOutline.title,
-            title: questionRecord.title ?? `Question ${j + 1}`,
+            title: savedQuestion.title,
           });
         }
-      } else {
-        // Generate questions using AI
-        questions = await generateQuestionsForModule(
-          slides,
-          moduleId,
-          moduleOutline,
-          aiScope,
-          orderCursor
-        );
       }
       generatedModule.questions = questions;
 
@@ -352,14 +310,17 @@ export async function createCourseFromOutline(
  * Generates 3-5 atomic cards for a module. Each card teaches exactly one
  * idea: card 0 is the core idea with a concrete example, and each remaining
  * card takes one learning objective, alternating example and distinction.
+ * Each card is followed by its own check-your-understanding question.
  */
 async function generateSlidesForModule(
   moduleOutline: ModuleOutline,
   moduleId: string,
   scope: AiScope | undefined,
-  orderCursor: OrderCursor
-): Promise<GeneratedSlide[]> {
+  orderCursor: OrderCursor,
+  askQuestion: boolean
+): Promise<{ slides: GeneratedSlide[]; questions: GeneratedQuestion[] }> {
   const slides: GeneratedSlide[] = [];
+  const questions: GeneratedQuestion[] = [];
   const objectives = moduleOutline.learningObjectives
     .map((objective) => objective.trim())
     .filter(Boolean);
@@ -397,153 +358,181 @@ ${
 Do not introduce or summarise the module.`;
       }
 
-      // Generate one card (stateful: sees course, module and prior cards)
+      // Generate one card with its question in a single call (stateful: sees
+      // course, module and prior cards). Without a question, cards generate as
+      // plain Markdown rather than JSON.
+      if (askQuestion) {
+        const cardResult = await generateSlideWithQuestion(slidePrompt, scope);
+        if (cardResult.success && cardResult.card) {
+          const savedSlide = await saveSlide(
+            cardResult.card.title,
+            cardResult.card.content,
+            moduleId,
+            moduleOutline,
+            scope,
+            orderCursor,
+            `Slide ${i + 1}`
+          );
+          slides.push(savedSlide);
+
+          const savedQuestion = await saveQuestion(
+            cardResult.card.question,
+            moduleId,
+            orderCursor,
+            `Question for ${savedSlide.title}`
+          );
+          questions.push(savedQuestion);
+          scope?.context?.state?.questions?.push({
+            module: moduleOutline.title,
+            title: savedQuestion.title,
+          });
+        }
+        continue;
+      }
+
       const slideResult = await generateSlideContent(slidePrompt, undefined, scope);
 
       if (slideResult.success && slideResult.content) {
-        // Create content relationship first
-        const [contentItem] = await db.insert(content).values({
-          type: 'SLIDE',
-          order: orderCursor.next++,
-          module_id: moduleId,
-        }).returning();
-
-        // Create slide in database
-        const [slideRecord] = await db.insert(slide).values({
-          title: slideResult.title || `Slide ${i + 1}`,
-          content: slideResult.content,
-          module_id: moduleId,
-          content_item_id: contentItem.id,
-        }).returning();
-
-        slides.push({
-          id: slideRecord.id,
-          title: slideRecord.title ?? `Slide ${i + 1}`,
-          content: slideRecord.content,
-          order: contentItem.order,
-        });
-
-        // Record in the shared generation state so the next slide/question builds on this one
-        scope?.context?.state?.slides?.push({
-          module: moduleOutline.title,
-          title: slideRecord.title ?? `Slide ${i + 1}`,
-        });
+        slides.push(
+          await saveSlide(
+            slideResult.title,
+            slideResult.content,
+            moduleId,
+            moduleOutline,
+            scope,
+            orderCursor,
+            `Slide ${i + 1}`
+          )
+        );
       }
     }
   } catch (error) {
     console.error("Error generating slides for module:", error);
   }
 
-  return slides;
+  return { slides, questions };
 }
 
-/**
- * Generates questions for a module based on its slides
- */
-async function generateQuestionsForModule(
-  slides: GeneratedSlide[],
+/** Persists one slide and records it in the shared generation state. */
+async function saveSlide(
+  title: string | null | undefined,
+  slideContent: string,
+  moduleId: string,
+  moduleOutline: ModuleOutline,
+  scope: AiScope | undefined,
+  orderCursor: OrderCursor,
+  fallbackTitle: string
+): Promise<GeneratedSlide> {
+  const [contentItem] = await db.insert(content).values({
+    type: "SLIDE",
+    order: orderCursor.next++,
+    module_id: moduleId,
+  }).returning();
+
+  const [slideRecord] = await db.insert(slide).values({
+    title: title || fallbackTitle,
+    content: slideContent,
+    module_id: moduleId,
+    content_item_id: contentItem.id,
+  }).returning();
+
+  const savedSlide: GeneratedSlide = {
+    id: slideRecord.id,
+    title: slideRecord.title ?? fallbackTitle,
+    content: slideRecord.content,
+    order: contentItem.order,
+  };
+
+  // Record in the shared generation state so the next slide/question builds on this one
+  scope?.context?.state?.slides?.push({
+    module: moduleOutline.title,
+    title: savedSlide.title,
+  });
+
+  return savedSlide;
+}
+
+/** Generates and saves one true/false or MCQ question from an existing slide. */
+async function generateQuestionForSlide(
+  slide: GeneratedSlide,
   moduleId: string,
   moduleOutline: ModuleOutline,
   scope: AiScope | undefined,
   orderCursor: OrderCursor
-): Promise<GeneratedQuestion[]> {
-  const questions: GeneratedQuestion[] = [];
+): Promise<GeneratedQuestion | null> {
+  const questionResult = await generateMCQFromSlide(
+    `Check that the learner understood this slide. Write a 3-4 option multiple choice question by default; use true/false only when the slide's core point is one clear binary claim the learner should judge. Ask about this slide only.\n\n--- ${slide.title} ---\n${slide.content}`,
+    scope,
+    "mixed"
+  );
 
-  try {
-    // Generate 2 questions per module for comprehensive assessment (limited to prevent large payloads)
-    const numQuestions = Math.min(Math.max(slides.length, 2), 2);
-
-    // Create comprehensive module context for better questions
-    const moduleContext = `
-Module: ${slides[0]?.title || 'Module Content'}
-All Slides Content:
-${slides.map(slide => `--- ${slide.title} ---\n${slide.content}`).join('\n\n')}
-
-Learning Objectives: ${moduleOutline.learningObjectives.join(', ')}
-    `.trim();
-
-    for (let i = 0; i < numQuestions; i++) {
-      let questionType = 'conceptual';
-
-      if (i === 0) {
-        questionType = 'foundational'; // Test basic understanding
-      } else if (i === 1) {
-        questionType = 'application'; // Test ability to apply concepts
-      } else {
-        questionType = 'analysis'; // Test deeper understanding
-      }
-
-      // Create specialized prompts for different question types
-      const questionPrompt = `Based on this comprehensive module content, create a ${questionType} multiple choice question:
-
-${moduleContext}
-
-Question Type: ${questionType}
-
-Guidelines for ${questionType} questions:
-${questionType === 'foundational' ? '- Test basic definitions, terminology, and core concepts' :
- questionType === 'application' ? '- Test ability to apply concepts to real scenarios' :
- '- Test critical thinking, analysis, and connections between ideas'}
-
-Create a challenging but fair question that requires understanding of the material, not just memorization.`;
-
-      // Generate question using existing AI function with enhanced context (stateful: sees course, module and prior questions)
-      const questionResult = await generateMCQFromSlide(questionPrompt, scope);
-
-      if (questionResult.success && questionResult.mcq) {
-        // Create content relationship first
-        const [questionContentItem] = await db.insert(content).values({
-          type: 'QUESTION',
-          order: orderCursor.next++,
-          module_id: moduleId,
-        }).returning();
-
-        // Create question in database
-        const [questionRecord] = await db.insert(question).values({
-          title: questionResult.mcq.title || `Question ${i + 1}`,
-          content: questionResult.mcq.question,
-          module_id: moduleId,
-          content_item_id: questionContentItem.id,
-        }).returning();
-
-        // Create options
-        const questionOptions: QuestionOption[] = [];
-        for (const optionData of questionResult.mcq.options) {
-          const [createdOption] = await db.insert(option).values({
-            text: optionData.text,
-            isCorrect: optionData.isCorrect,
-            explanation: optionData.explanation || "",
-            questionId: questionRecord.id,
-          }).returning();
-
-          questionOptions.push({
-            id: createdOption.id,
-            text: createdOption.text,
-            isCorrect: createdOption.isCorrect,
-            explanation: createdOption.explanation ?? "",
-          });
-        }
-
-        questions.push({
-          id: questionRecord.id,
-          title: questionRecord.title ?? `Question ${i + 1}`,
-          question: questionRecord.content,
-          options: questionOptions,
-          order: questionContentItem.order,
-        });
-
-        // Record in the shared generation state so the next question builds on this one
-        scope?.context?.state?.questions?.push({
-          module: moduleOutline.title,
-          title: questionRecord.title ?? `Question ${i + 1}`,
-        });
-      }
-    }
-  } catch (error) {
-    console.error("Error generating questions for module:", error);
+  if (!questionResult.success || !questionResult.mcq) {
+    return null;
   }
 
-  return questions;
+  const savedQuestion = await saveQuestion(
+    questionResult.mcq,
+    moduleId,
+    orderCursor,
+    `Question for ${slide.title}`
+  );
+
+  scope?.context?.state?.questions?.push({
+    module: moduleOutline.title,
+    title: savedQuestion.title,
+  });
+
+  return savedQuestion;
+}
+
+/** Persists one question with its options and returns it in the app's shape. */
+async function saveQuestion(
+  questionData: {
+    title?: string | null;
+    question: string;
+    options: { text: string; isCorrect: boolean; explanation?: string }[];
+  },
+  moduleId: string,
+  orderCursor: OrderCursor,
+  fallbackTitle: string
+): Promise<GeneratedQuestion> {
+  const [questionContentItem] = await db.insert(content).values({
+    type: "QUESTION",
+    order: orderCursor.next++,
+    module_id: moduleId,
+  }).returning();
+
+  const [questionRecord] = await db.insert(question).values({
+    title: questionData.title || fallbackTitle,
+    content: questionData.question,
+    module_id: moduleId,
+    content_item_id: questionContentItem.id,
+  }).returning();
+
+  const questionOptions: QuestionOption[] = [];
+  for (const optionData of questionData.options) {
+    const [createdOption] = await db.insert(option).values({
+      text: optionData.text,
+      isCorrect: optionData.isCorrect,
+      explanation: optionData.explanation || "",
+      questionId: questionRecord.id,
+    }).returning();
+
+    questionOptions.push({
+      id: createdOption.id,
+      text: createdOption.text,
+      isCorrect: createdOption.isCorrect,
+      explanation: createdOption.explanation ?? "",
+    });
+  }
+
+  return {
+    id: questionRecord.id,
+    title: questionRecord.title ?? fallbackTitle,
+    question: questionRecord.content,
+    options: questionOptions,
+    order: questionContentItem.order,
+  };
 }
 
 /** Deterministic written task for when the AI call fails, so no module is left without practice. */
