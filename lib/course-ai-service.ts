@@ -194,7 +194,7 @@ ${contentForAI}
 
 ${instruction}`;
 
-  const { text: aiContent } = await generateText({
+  const aiContent = await generateWithBackoff({
     model: aiProvider.chatModel(getModel()),
     system: systemPrompt,
     prompt: userPrompt,
@@ -240,6 +240,35 @@ ${instruction}`;
     success: true,
     outline: outlineData,
   };
+}
+
+/** Waits out a spent per-minute quota once, honouring the provider's retry-after. */
+async function generateWithBackoff(
+  options: Parameters<typeof generateText>[0]
+): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const { text } = await generateText(options);
+      return text;
+    } catch (error) {
+      const waitMs = retryAfterMs(error);
+      if (attempt > 0 || waitMs === null) throw error;
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+}
+
+/** Delay before retrying a 429, or null when the error is not retryable. */
+function retryAfterMs(error: unknown): number | null {
+  const typed = error as {
+    statusCode?: number;
+    responseHeaders?: Record<string, string>;
+  };
+  if (typed?.statusCode !== 429) return null;
+  const seconds = Number(typed.responseHeaders?.["retry-after"]);
+  return Number.isFinite(seconds) && seconds > 0
+    ? Math.min(seconds, 10) * 1000
+    : 3000;
 }
 
 /**
