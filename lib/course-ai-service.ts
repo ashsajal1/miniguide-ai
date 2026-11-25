@@ -94,7 +94,7 @@ export async function generateCourseOutline(url: string): Promise<CourseOutlineR
       };
     }
 
-    return buildOutline(
+    return await buildOutline(
       extractedContent.title,
       extractedContent.text,
       "Create a guide outline based on this content. The guide should teach the material covered in the document."

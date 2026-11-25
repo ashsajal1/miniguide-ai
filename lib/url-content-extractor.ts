@@ -1,7 +1,5 @@
 "use server";
 
-import { JSDOM } from "jsdom";
-
 export interface ExtractedContent {
   title: string;
   text: string;
@@ -12,29 +10,51 @@ export interface ExtractedContent {
 // Maximum characters to send to AI (~12K tokens estimate)
 const MAX_CONTENT_CHARS = 40000;
 
-// Tags to remove entirely from the document
-const REMOVE_TAGS = [
-  "script", "style", "nav", "header", "footer", "aside",
-  "iframe", "noscript", "svg", "form", "button", "input",
-  "select", "textarea", "dialog", "menu", "menuitem",
-];
+// Elements whose whole subtree is chrome, not content
+const BOILERPLATE =
+  /<(script|style|nav|header|footer|aside|iframe|noscript|svg|form|button|select|textarea|dialog|menu|template)\b[\s\S]*?<\/\1>/gi;
 
-// Selectors for content regions to prioritize
-const CONTENT_SELECTORS = [
-  "article",
-  "main",
-  '[role="main"]',
-  ".post-content",
-  ".article-content",
-  ".entry-content",
-  ".content",
-  "#content",
-  ".markdown-body",
-  ".prose",
-];
+const BLOCK_END = /<\/(p|div|section|article|main|li|tr|table|blockquote|figure|dl|dd|dt)>/gi;
+
+const ENTITY_NAMES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  rsquo: "’",
+  lsquo: "‘",
+  ldquo: "“",
+  rdquo: "”",
+};
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]+|#[0-9]+|[a-z]+);/gi, (match, name: string) => {
+    if (name[0] === "#") {
+      const code =
+        name[1] === "x" || name[1] === "X"
+          ? parseInt(name.slice(2), 16)
+          : parseInt(name.slice(1), 10);
+      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+    }
+    return ENTITY_NAMES[name.toLowerCase()] ?? match;
+  });
+}
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]*>/g, " ");
+}
 
 /**
- * Extracts clean text content from a URL
+ * Extracts clean text content from a URL.
+ *
+ * No DOM library: jsdom cannot boot on Cloudflare Workers (`__dirname` in its
+ * style-rules, and `node:vm` is missing), so the HTML is reduced to text with
+ * targeted regexes. Trimmed-down markdown is all the outline prompt needs.
  */
 export async function extractContentFromUrl(url: string): Promise<ExtractedContent> {
   const response = await fetch(url, {
@@ -52,39 +72,16 @@ export async function extractContentFromUrl(url: string): Promise<ExtractedConte
   }
 
   const html = await response.text();
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
 
-  // Remove unwanted elements
-  for (const tag of REMOVE_TAGS) {
-    const elements = document.querySelectorAll(tag);
-    elements.forEach((el: Element) => el.remove());
-  }
-
-  // Try to find the main content area
-  let contentElement: Element | null = null;
-  for (const selector of CONTENT_SELECTORS) {
-    contentElement = document.querySelector(selector);
-    if (contentElement) break;
-  }
-
-  // Fall back to body if no content area found
-  if (!contentElement) {
-    contentElement = document.body;
-  }
-
-  // Extract title
   const title =
-    document.querySelector("title")?.textContent?.trim() ||
-    document.querySelector("h1")?.textContent?.trim() ||
+    decodeEntities(stripTags(/<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1] ?? ""))
+      .trim() ||
+    decodeEntities(
+      stripTags(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i.exec(html)?.[1] ?? "")
+    ).trim() ||
     "Untitled Document";
 
-  // Extract clean text
-  const text = extractText(contentElement);
-
-  // Clean up the text
-  const cleanedText = cleanText(text);
-
+  const cleanedText = cleanText(htmlToText(contentRegion(html)));
   const wordCount = cleanedText.split(/\s+/).filter(Boolean).length;
 
   return {
@@ -95,74 +92,35 @@ export async function extractContentFromUrl(url: string): Promise<ExtractedConte
   };
 }
 
-/**
- * Recursively extracts text from a DOM element, preserving structure
- */
-function extractText(element: Element | null): string {
-  if (!element) return "";
-
-  const parts: string[] = [];
-
-  for (const child of element.childNodes) {
-    if (child.nodeType === child.TEXT_NODE) {
-      const text = child.textContent?.trim();
-      if (text) {
-        parts.push(text);
-      }
-    } else if (child.nodeType === child.ELEMENT_NODE) {
-      const el = child as Element;
-      const tagName = el.tagName.toLowerCase();
-
-      // Skip hidden elements
-      const style = el.getAttribute("style") || "";
-      if (style.includes("display: none") || style.includes("visibility: hidden")) {
-        continue;
-      }
-
-      // Add structure markers for headings and lists
-      if (/^h[1-6]$/.test(tagName)) {
-        const level = parseInt(tagName[1]);
-        const prefix = "#".repeat(level);
-        parts.push(`\n\n${prefix} ${el.textContent?.trim()}\n`);
-      } else if (tagName === "p" || tagName === "div") {
-        const text = extractText(el);
-        if (text) parts.push(`\n\n${text}`);
-      } else if (tagName === "li") {
-        const text = extractText(el);
-        if (text) parts.push(`\n- ${text}`);
-      } else if (tagName === "pre" || tagName === "code") {
-        parts.push(`\n\`\`\`\n${el.textContent?.trim()}\n\`\`\`\n`);
-      } else if (tagName === "table") {
-        parts.push(`\n\n${extractTableText(el)}\n`);
-      } else if (tagName === "br") {
-        parts.push("\n");
-      } else {
-        parts.push(extractText(el));
-      }
-    }
-  }
-
-  return parts.join(" ");
+/** Narrows to the page's main content block when the site marks one. */
+function contentRegion(html: string): string {
+  const tag = /<(main|article)\b[^>]*>([\s\S]*?)<\/\1>/i.exec(html);
+  if (tag) return tag[2];
+  const role = /<[a-z]+\b[^>]*role="main"[^>]*>([\s\S]*?)<\/[a-z]+>/i.exec(html);
+  return role ? role[1] : html;
 }
 
-/**
- * Extracts text from a table in a structured format
- */
-function extractTableText(table: Element): string {
-  const rows: string[] = [];
-  const trElements = table.querySelectorAll("tr");
-
-  trElements.forEach((tr) => {
-    const cells: string[] = [];
-    tr.querySelectorAll("td, th").forEach((cell) => {
-      cells.push(cell.textContent?.trim() || "");
-    });
-    if (cells.length > 0) {
-      rows.push(cells.join(" | "));
-    }
-  });
-
-  return rows.join("\n");
+/** Flattens HTML into markdown-ish text, keeping headings, lists and code. */
+function htmlToText(html: string): string {
+  return decodeEntities(
+    html
+      .replace(BOILERPLATE, " ")
+      // Code and pre blocks first, so their angle brackets survive
+      .replace(
+        /<(pre|code)\b[^>]*>([\s\S]*?)<\/\1>/gi,
+        (_, __, body: string) =>
+          `\n\`\`\`\n${decodeEntities(stripTags(body)).trim()}\n\`\`\`\n`
+      )
+      .replace(
+        /<h([1-6])\b[^>]*>([\s\S]*?)<\/h\1>/gi,
+        (_, level: string, body: string) =>
+          `\n\n${"#".repeat(Number(level))} ${stripTags(body)}\n`
+      )
+      .replace(/<li\b[^>]*>([\s\S]*?)<\/li>/gi, (_, body: string) => `\n- ${stripTags(body)}`)
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(BLOCK_END, "\n\n")
+      .replace(/<[^>]*>/g, " ")
+  );
 }
 
 /**
