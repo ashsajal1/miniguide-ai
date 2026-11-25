@@ -2,6 +2,7 @@
 
 import { generateText } from "ai";
 import { aiProvider, getModel, isAiConfigured } from "@/lib/ai";
+import { stripCodeFences } from "@/lib/written-ai";
 import {
   AiScope,
   buildCoursePromptContext,
@@ -202,23 +203,33 @@ ${stateContextBlock ? `${stateContextBlock}\n\n` : ""}Return ONLY valid JSON (no
   }
 }`;
 
-    const { text } = await generateText({
+    const { text, finishReason } = await generateText({
       model: aiProvider.chatModel(getModel()),
       system: systemPrompt,
       prompt: `Create one card about: ${prompt}`,
       temperature: 0.7,
-      maxOutputTokens: 1200,
+      // Reasoning models spend part of this budget thinking before the JSON.
+      maxOutputTokens: 4000,
     });
 
-    const cleaned = text
-      .replace(/^```(?:json)?\n?/gm, "")
-      .replace(/```$/gm, "")
-      .trim();
-    const parsed = JSON.parse(cleaned) as {
-      title?: string;
-      content?: string;
-      question?: GeneratedCardQuestion;
-    };
+    if (finishReason === "length") {
+      return {
+        success: false,
+        error: "AI response was cut off before the card finished. Try again.",
+      };
+    }
+
+    // Models sometimes wrap the object in prose or fences; keep just the object.
+    const raw = stripCodeFences(text);
+    const start = raw.indexOf("{");
+    const end = raw.lastIndexOf("}");
+
+    let parsed: { title?: string; content?: string; question?: GeneratedCardQuestion };
+    try {
+      parsed = JSON.parse(start === -1 ? raw : raw.slice(start, end + 1));
+    } catch {
+      return { success: false, error: "AI returned an unreadable card. Try again." };
+    }
 
     const question = parsed.question;
     if (
