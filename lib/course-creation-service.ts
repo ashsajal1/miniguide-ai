@@ -1,304 +1,112 @@
 "use server";
 
 import { currentUser } from "@clerk/nextjs/server";
+import { asc, eq } from "drizzle-orm";
 import db from "@/db/client";
-import { content, course as courseTable, module as moduleTable, option, question, slide, written } from "@/db/schema";
+import {
+  content,
+  course as courseTable,
+  module as moduleTable,
+  option,
+  question,
+  slide,
+  written,
+} from "@/db/schema";
 import { CourseOutline, ModuleOutline } from "@/lib/course-ai-service";
-import { generateSlideContent, generateSlideWithQuestion } from "@/app/course/edit/[id]/slide/ai-actions";
+import {
+  generateSlideContent,
+  generateSlideWithQuestion,
+} from "@/app/course/edit/[id]/slide/ai-actions";
 import { generateMCQFromSlide } from "@/app/course/edit/[id]/question/ai-actions";
 import {
   generateWrittenTask,
   GeneratedWrittenTask,
 } from "@/app/course/edit/[id]/written/ai-actions";
-import {
-  AiScope,
-  GenerationState,
-  ResolvedAiContext,
-  loadLearnerProfile,
-} from "@/lib/ai-context";
+import { AiScope, GenerationState, loadAiContext } from "@/lib/ai-context";
 
-export interface CourseGenerationProgress {
-  stage:
-    | "creating-course"
-    | "generating-slides"
-    | "generating-questions"
-    | "generating-written"
-    | "finalizing";
-  progress: number;
-  message: string;
-  currentModule?: number;
-  totalModules?: number;
+/** Older outlines were capped at ten modules; keep generated courses the same size. */
+const MAX_MODULES = 10;
+
+export interface CourseSkeletonModule {
+  id: string;
+  title: string;
+  order: number;
 }
 
-export interface GeneratedCourse {
+export interface CourseSkeleton {
   id: string;
   title: string;
   description: string;
-  modules: GeneratedModule[];
+  modules: CourseSkeletonModule[];
 }
 
-export interface GeneratedModule {
-  id: string;
-  title: string;
-  order: number;
-  slides: GeneratedSlide[];
-  questions: GeneratedQuestion[];
-  written: GeneratedWritten | null;
-}
-
-export interface GeneratedWritten {
-  id: string;
-  title: string;
-  prompt: string;
-  guidance?: string;
-  order: number;
-}
-
-export interface GeneratedSlide {
-  id: string;
-  title: string;
-  content: string;
-  order: number;
-}
-
-export interface GeneratedQuestion {
-  id: string;
-  title: string;
-  question: string;
-  options: QuestionOption[];
-  order: number;
-}
-
-export interface QuestionOption {
-  id: string;
-  text: string;
-  isCorrect: boolean;
-  explanation: string;
-}
-
-/** Per-module content order: 0, 1, 2… so a module can hold any number of items. */
-interface OrderCursor {
-  next: number;
+export interface ModuleGenerationResult {
+  slides: number;
+  questions: number;
+  written: boolean;
 }
 
 /**
- * Creates a full course from an outline, including slides and questions
+ * Saves the course and its module list before any content is generated, so the
+ * editor shows the structure straight away and a failed build leaves a course
+ * that can be resumed instead of a half-written one.
  */
-export async function createCourseFromOutline(
+export async function createCourseSkeleton(
   outline: CourseOutline
-): Promise<{ success: boolean; course?: GeneratedCourse; error?: string }> {
-  "use server";
-
+): Promise<{ success: boolean; course?: CourseSkeleton; error?: string }> {
   try {
     const user = await currentUser();
     if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    // Stage 1: Create course record
-
-    const [course] = await db.insert(courseTable).values({
-      name: outline.title,
-      description: outline.description,
-      difficulty: outline.difficulty,
-      lang: outline.language,
-      thumbnail_url: "", // Will be updated later if needed
-      creator: user.id,
-    }).returning();
-
-    const generatedCourse: GeneratedCourse = {
-      id: course.id,
-      title: course.name,
-      description: course.description,
-      modules: [],
-    };
-
-    // Stateful AI context shared across every generation call in this run:
-    // the course (with its full module roadmap) plus an accumulating record of
-    // everything already generated, so later modules/slides/questions build on
-    // earlier ones instead of repeating them.
-    const totalModules = Math.min(outline.modules.length, 10);
-    const generationState: GenerationState = {
-      slides: [],
-      questions: [],
-      written: [],
-    };
-    const aiContext: ResolvedAiContext = {
-      learnerProfile: await loadLearnerProfile(),
-      course: {
-        title: outline.title,
+    const [course] = await db
+      .insert(courseTable)
+      .values({
+        name: outline.title,
         description: outline.description,
         difficulty: outline.difficulty,
-        language: outline.language,
-        roadmap: outline.modules.slice(0, totalModules).map((m, idx) => ({
-          order: idx + 1,
-          title: m.title,
-          description: m.description,
-        })),
-      },
-      state: generationState,
-    };
-    const aiScope: AiScope = { courseId: course.id, context: aiContext };
+        lang: outline.language,
+        thumbnail_url: "",
+        creator: user.id,
+      })
+      .returning();
 
-    // Stage 2: Generate modules with content (limit to prevent payload size issues)
-
-    for (let i = 0; i < totalModules; i++) {
-      const moduleOutline = outline.modules[i];
-      const moduleOrder = i + 1;
-
-      // Create module
-      const [newModule] = await db.insert(moduleTable).values({
-        title: moduleOutline.title,
-        course_id: course.id,
-        order: moduleOutline.order ?? moduleOrder,
-      }).returning();
-
-      const moduleId = newModule.id;
-
-      // Point the shared context at the module currently being generated
-      aiContext.module = {
-        title: moduleOutline.title,
-        description: moduleOutline.description,
-        learningObjectives: moduleOutline.learningObjectives,
-        position: moduleOrder,
-        totalModules,
-      };
-
-      const generatedModule: GeneratedModule = {
-        id: moduleId,
-        title: newModule.title,
-        order: newModule.order ?? moduleOrder,
-        slides: [],
-        questions: [],
-        written: null,
-      };
-
-      // Content order is sequential per module, so 5 cards + 2 questions + a
-      // written task cannot collide the way a stride of 10 would.
-      const orderCursor: OrderCursor = { next: 0 };
-
-      // Every slide is followed by a check-your-understanding question, unless
-      // the outline already carries hand-written questions for this module.
-      const hasProvidedQuestions = Boolean(moduleOutline.questions?.length);
-      const askQuestion = !hasProvidedQuestions;
-
-      let slides: GeneratedSlide[] = [];
-      let questions: GeneratedQuestion[] = [];
-
-      if (moduleOutline.slides && moduleOutline.slides.length > 0) {
-        // Use provided slides; each still gets its own generated question.
-        for (let j = 0; j < moduleOutline.slides.length; j++) {
-          const slideOutline = moduleOutline.slides[j];
-          const savedSlide = await saveSlide(
-            slideOutline.title,
-            slideOutline.content,
-            moduleId,
-            moduleOutline,
-            aiScope,
-            orderCursor,
-            `Slide ${j + 1}`
-          );
-          slides.push(savedSlide);
-
-          const question = askQuestion
-            ? await generateQuestionForSlide(
-                savedSlide,
-                moduleId,
-                moduleOutline,
-                aiScope,
-                orderCursor
-              )
-            : null;
-          if (question) questions.push(question);
-        }
-      } else {
-        // Generate slides using AI
-        const generated = await generateSlidesForModule(
-          moduleOutline,
-          moduleId,
-          aiScope,
-          orderCursor,
-          askQuestion
-        );
-        slides = generated.slides;
-        questions = generated.questions;
+    const modules: CourseSkeletonModule[] = [];
+    try {
+      for (const moduleOutline of outline.modules.slice(0, MAX_MODULES)) {
+        const [newModule] = await db
+          .insert(moduleTable)
+          .values({
+            title: moduleOutline.title,
+            course_id: course.id,
+            order: moduleOutline.order ?? modules.length + 1,
+          })
+          .returning();
+        modules.push({
+          id: newModule.id,
+          title: newModule.title,
+          order: newModule.order ?? modules.length + 1,
+        });
       }
-      generatedModule.slides = slides;
-
-      if (hasProvidedQuestions) {
-        for (let j = 0; j < moduleOutline.questions!.length; j++) {
-          const questionOutline = moduleOutline.questions![j];
-          const savedQuestion = await saveQuestion(
-            {
-              title: questionOutline.title,
-              question: questionOutline.content,
-              options: questionOutline.options,
-            },
-            moduleId,
-            orderCursor,
-            `Question ${j + 1}`
-          );
-          questions.push(savedQuestion);
-          generationState.questions!.push({
-            module: moduleOutline.title,
-            title: savedQuestion.title,
-          });
-        }
-      }
-      generatedModule.questions = questions;
-
-      // One written practice task per module, after the questions. If the AI
-      // call fails, a deterministic task still gives every module a written part.
-      const writtenMaterial = slides
-        .map((slide) => `--- ${slide.title} ---\n${slide.content}`)
-        .join("\n\n");
-      const writtenResult = writtenMaterial.trim()
-        ? await generateWrittenTask(writtenMaterial, aiScope)
-        : null;
-      if (writtenResult && !writtenResult.success) {
-        console.warn(
-          `Using a fallback written task for "${moduleOutline.title}": ${writtenResult.error}`
-        );
-      }
-      const writtenTask: GeneratedWrittenTask = writtenResult?.success
-        ? writtenResult.task
-        : buildFallbackWrittenTask(moduleOutline);
-
-      const [writtenContentItem] = await db.insert(content).values({
-        type: "WRITTEN",
-        order: orderCursor.next++,
-        module_id: moduleId,
-      }).returning();
-      const [writtenRecord] = await db.insert(written).values({
-        title: writtenTask.title,
-        prompt: writtenTask.prompt,
-        guidance: writtenTask.guidance ?? null,
-        module_id: moduleId,
-        content_item_id: writtenContentItem.id,
-      }).returning();
-
-      generatedModule.written = {
-        id: writtenRecord.id,
-        title: writtenRecord.title ?? writtenTask.title,
-        prompt: writtenRecord.prompt,
-        guidance: writtenRecord.guidance ?? undefined,
-        order: writtenContentItem.order,
-      };
-      generationState.written!.push({
-        module: moduleOutline.title,
-        title: generatedModule.written.title,
-      });
-
-      generatedCourse.modules.push(generatedModule);
+    } catch (error) {
+      // No transactions on the HTTP driver: undo the empty course ourselves.
+      await db.delete(moduleTable).where(eq(moduleTable.course_id, course.id));
+      await db.delete(courseTable).where(eq(courseTable.id, course.id));
+      throw error;
     }
 
-    // Stage 3: Finalize
-    // Update course with completion status or any final touches
-
-    return { success: true, course: generatedCourse };
-
+    return {
+      success: true,
+      course: {
+        id: course.id,
+        title: course.name,
+        description: course.description,
+        modules,
+      },
+    };
   } catch (error) {
-    console.error("Error creating course from outline:", error);
+    console.error("Error creating course skeleton:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create course",
@@ -307,26 +115,140 @@ export async function createCourseFromOutline(
 }
 
 /**
- * Generates 3-5 atomic cards for a module. Each card teaches exactly one
- * idea: card 0 is the core idea with a concrete example, and each remaining
- * card takes one learning objective, alternating example and distinction.
- * Each card is followed by its own check-your-understanding question.
+ * Writes one module's slides, questions and written task. Everything is
+ * generated in memory first and only then saved, so an AI failure leaves the
+ * module empty and a retry starts clean.
  */
-async function generateSlidesForModule(
-  moduleOutline: ModuleOutline,
+export async function generateModuleContent(
+  courseId: string,
   moduleId: string,
-  scope: AiScope | undefined,
-  orderCursor: OrderCursor,
-  askQuestion: boolean
-): Promise<{ slides: GeneratedSlide[]; questions: GeneratedQuestion[] }> {
-  const slides: GeneratedSlide[] = [];
-  const questions: GeneratedQuestion[] = [];
+  moduleOutline: ModuleOutline
+): Promise<{
+  success: boolean;
+  module?: ModuleGenerationResult;
+  error?: string;
+}> {
+  try {
+    const user = await currentUser();
+    if (!user) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    const dbCourse = await db.query.course.findFirst({
+      where: eq(courseTable.id, courseId),
+      with: {
+        modules: {
+          orderBy: asc(moduleTable.order),
+          columns: { id: true, title: true, order: true },
+        },
+      },
+    });
+    if (!dbCourse || dbCourse.creator !== user.id) {
+      return { success: false, error: "Course not found" };
+    }
+    const position = dbCourse.modules.findIndex((m) => m.id === moduleId);
+    if (position === -1) {
+      return { success: false, error: "Module not found" };
+    }
+
+    const context = (await loadAiContext({ courseId, moduleId })) ?? {};
+    context.module = {
+      title: moduleOutline.title,
+      description: moduleOutline.description,
+      learningObjectives: moduleOutline.learningObjectives,
+      position: position + 1,
+      totalModules: dbCourse.modules.length,
+    };
+    const scope: AiScope = { courseId, moduleId, context };
+    const state: GenerationState =
+      context.state ?? (context.state = { slides: [], questions: [], written: [] });
+
+    const drafts = await buildModuleDrafts(moduleOutline, scope, state);
+    const saved = await saveModuleDrafts(moduleId, drafts);
+
+    return { success: true, module: saved };
+  } catch (error) {
+    console.error("Error generating module content:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to write module",
+    };
+  }
+}
+
+interface DraftOption {
+  text: string;
+  isCorrect: boolean;
+  explanation?: string;
+}
+
+type DraftItem =
+  | { type: "SLIDE"; title: string; content: string }
+  | {
+      type: "QUESTION";
+      title: string;
+      question: string;
+      options: DraftOption[];
+    };
+
+/**
+ * Builds every item for a module in memory and records them in the shared
+ * generation state, so later calls build on them instead of repeating them.
+ */
+async function buildModuleDrafts(
+  moduleOutline: ModuleOutline,
+  scope: AiScope,
+  state: GenerationState
+): Promise<{ items: DraftItem[]; writtenTask: GeneratedWrittenTask }> {
+  const items: DraftItem[] = [];
   const objectives = moduleOutline.learningObjectives
     .map((objective) => objective.trim())
     .filter(Boolean);
-  const cardCount = Math.min(Math.max(objectives.length + 1, 3), 5);
 
-  try {
+  // Hand-written questions replace the one-question-per-card behaviour.
+  const hasProvidedQuestions = Boolean(moduleOutline.questions?.length);
+  const askQuestion = !hasProvidedQuestions;
+  const recordSlide = (title: string, slideContent: string) => {
+    items.push({ type: "SLIDE", title, content: slideContent });
+    state.slides!.push({ module: moduleOutline.title, title });
+  };
+  const recordQuestion = (questionDraft: {
+    title: string;
+    question: string;
+    options?: DraftOption[];
+  }) => {
+    items.push({
+      type: "QUESTION",
+      title: questionDraft.title,
+      question: questionDraft.question,
+      options: questionDraft.options ?? [],
+    });
+    state.questions!.push({ module: moduleOutline.title, title: questionDraft.title });
+  };
+
+  if (moduleOutline.slides && moduleOutline.slides.length > 0) {
+    for (let j = 0; j < moduleOutline.slides.length; j++) {
+      const provided = moduleOutline.slides[j];
+      recordSlide(provided.title, provided.content);
+
+      if (!askQuestion) continue;
+      const questionResult = await generateMCQFromSlide(
+        `Check that the learner understood this slide. Write a 3-4 option multiple choice question by default; use true/false only when the slide's core point is one clear binary claim the learner should judge. Ask about this slide only.\n\n--- ${provided.title} ---\n${provided.content}`,
+        scope,
+        "mixed"
+      );
+      if (questionResult.success && questionResult.mcq) {
+        recordQuestion({
+          title:
+            questionResult.mcq.title || `Question for ${provided.title}`,
+          question: questionResult.mcq.question,
+          options: questionResult.mcq.options,
+        });
+      }
+    }
+  } else {
+    const cardCount = Math.min(Math.max(objectives.length + 1, 3), 5);
+
     for (let i = 0; i < cardCount; i++) {
       let slidePrompt: string;
 
@@ -358,181 +280,115 @@ ${
 Do not introduce or summarise the module.`;
       }
 
-      // Generate one card with its question in a single call (stateful: sees
-      // course, module and prior cards). Without a question, cards generate as
-      // plain Markdown rather than JSON.
+      // One call writes a card and its question; without a question the card
+      // comes back as plain Markdown rather than JSON.
       if (askQuestion) {
         const cardResult = await generateSlideWithQuestion(slidePrompt, scope);
         if (cardResult.success && cardResult.card) {
-          const savedSlide = await saveSlide(
-            cardResult.card.title,
-            cardResult.card.content,
-            moduleId,
-            moduleOutline,
-            scope,
-            orderCursor,
-            `Slide ${i + 1}`
-          );
-          slides.push(savedSlide);
-
-          const savedQuestion = await saveQuestion(
-            cardResult.card.question,
-            moduleId,
-            orderCursor,
-            `Question for ${savedSlide.title}`
-          );
-          questions.push(savedQuestion);
-          scope?.context?.state?.questions?.push({
-            module: moduleOutline.title,
-            title: savedQuestion.title,
-          });
+          recordSlide(cardResult.card.title, cardResult.card.content);
+          recordQuestion(cardResult.card.question);
         }
         continue;
       }
 
       const slideResult = await generateSlideContent(slidePrompt, undefined, scope);
-
       if (slideResult.success && slideResult.content) {
-        slides.push(
-          await saveSlide(
-            slideResult.title,
-            slideResult.content,
-            moduleId,
-            moduleOutline,
-            scope,
-            orderCursor,
-            `Slide ${i + 1}`
-          )
-        );
+        recordSlide(slideResult.title || `Slide ${i + 1}`, slideResult.content);
       }
     }
-  } catch (error) {
-    console.error("Error generating slides for module:", error);
   }
 
-  return { slides, questions };
-}
-
-/** Persists one slide and records it in the shared generation state. */
-async function saveSlide(
-  title: string | null | undefined,
-  slideContent: string,
-  moduleId: string,
-  moduleOutline: ModuleOutline,
-  scope: AiScope | undefined,
-  orderCursor: OrderCursor,
-  fallbackTitle: string
-): Promise<GeneratedSlide> {
-  const [contentItem] = await db.insert(content).values({
-    type: "SLIDE",
-    order: orderCursor.next++,
-    module_id: moduleId,
-  }).returning();
-
-  const [slideRecord] = await db.insert(slide).values({
-    title: title || fallbackTitle,
-    content: slideContent,
-    module_id: moduleId,
-    content_item_id: contentItem.id,
-  }).returning();
-
-  const savedSlide: GeneratedSlide = {
-    id: slideRecord.id,
-    title: slideRecord.title ?? fallbackTitle,
-    content: slideRecord.content,
-    order: contentItem.order,
-  };
-
-  // Record in the shared generation state so the next slide/question builds on this one
-  scope?.context?.state?.slides?.push({
-    module: moduleOutline.title,
-    title: savedSlide.title,
-  });
-
-  return savedSlide;
-}
-
-/** Generates and saves one true/false or MCQ question from an existing slide. */
-async function generateQuestionForSlide(
-  slide: GeneratedSlide,
-  moduleId: string,
-  moduleOutline: ModuleOutline,
-  scope: AiScope | undefined,
-  orderCursor: OrderCursor
-): Promise<GeneratedQuestion | null> {
-  const questionResult = await generateMCQFromSlide(
-    `Check that the learner understood this slide. Write a 3-4 option multiple choice question by default; use true/false only when the slide's core point is one clear binary claim the learner should judge. Ask about this slide only.\n\n--- ${slide.title} ---\n${slide.content}`,
-    scope,
-    "mixed"
-  );
-
-  if (!questionResult.success || !questionResult.mcq) {
-    return null;
-  }
-
-  const savedQuestion = await saveQuestion(
-    questionResult.mcq,
-    moduleId,
-    orderCursor,
-    `Question for ${slide.title}`
-  );
-
-  scope?.context?.state?.questions?.push({
-    module: moduleOutline.title,
-    title: savedQuestion.title,
-  });
-
-  return savedQuestion;
-}
-
-/** Persists one question with its options and returns it in the app's shape. */
-async function saveQuestion(
-  questionData: {
-    title?: string | null;
-    question: string;
-    options: { text: string; isCorrect: boolean; explanation?: string }[];
-  },
-  moduleId: string,
-  orderCursor: OrderCursor,
-  fallbackTitle: string
-): Promise<GeneratedQuestion> {
-  const [questionContentItem] = await db.insert(content).values({
-    type: "QUESTION",
-    order: orderCursor.next++,
-    module_id: moduleId,
-  }).returning();
-
-  const [questionRecord] = await db.insert(question).values({
-    title: questionData.title || fallbackTitle,
-    content: questionData.question,
-    module_id: moduleId,
-    content_item_id: questionContentItem.id,
-  }).returning();
-
-  const questionOptions: QuestionOption[] = [];
-  for (const optionData of questionData.options) {
-    const [createdOption] = await db.insert(option).values({
-      text: optionData.text,
-      isCorrect: optionData.isCorrect,
-      explanation: optionData.explanation || "",
-      questionId: questionRecord.id,
-    }).returning();
-
-    questionOptions.push({
-      id: createdOption.id,
-      text: createdOption.text,
-      isCorrect: createdOption.isCorrect,
-      explanation: createdOption.explanation ?? "",
+  for (let j = 0; j < (moduleOutline.questions?.length ?? 0); j++) {
+    const provided = moduleOutline.questions![j];
+    recordQuestion({
+      title: provided.title || `Question ${j + 1}`,
+      question: provided.content,
+      options: provided.options,
     });
   }
 
-  return {
-    id: questionRecord.id,
-    title: questionRecord.title ?? fallbackTitle,
-    question: questionRecord.content,
-    options: questionOptions,
-    order: questionContentItem.order,
-  };
+  // One written practice task per module, after the questions. If the AI call
+  // fails, a deterministic task still gives every module a written part.
+  const writtenMaterial = items
+    .filter((item): item is Extract<DraftItem, { type: "SLIDE" }> => item.type === "SLIDE")
+    .map((item) => `--- ${item.title} ---\n${item.content}`)
+    .join("\n\n");
+  const writtenResult = writtenMaterial.trim()
+    ? await generateWrittenTask(writtenMaterial, scope)
+    : null;
+  if (writtenResult && !writtenResult.success) {
+    console.warn(
+      `Using a fallback written task for "${moduleOutline.title}": ${writtenResult.error}`
+    );
+  }
+  const writtenTask = writtenResult?.success
+    ? writtenResult.task
+    : buildFallbackWrittenTask(moduleOutline);
+  state.written!.push({ module: moduleOutline.title, title: writtenTask.title });
+
+  return { items, writtenTask };
+}
+
+/** Persists a module's drafts in order: card, its question, then the written task. */
+async function saveModuleDrafts(
+  moduleId: string,
+  { items, writtenTask }: Awaited<ReturnType<typeof buildModuleDrafts>>
+): Promise<ModuleGenerationResult> {
+  let order = 0;
+  let slides = 0;
+  let questions = 0;
+
+  for (const item of items) {
+    const [contentItem] = await db
+      .insert(content)
+      .values({ type: item.type, order: order++, module_id: moduleId })
+      .returning();
+
+    if (item.type === "SLIDE") {
+      await db.insert(slide).values({
+        title: item.title,
+        content: item.content,
+        module_id: moduleId,
+        content_item_id: contentItem.id,
+      });
+      slides++;
+      continue;
+    }
+
+    const [questionRecord] = await db
+      .insert(question)
+      .values({
+        title: item.title,
+        content: item.question,
+        module_id: moduleId,
+        content_item_id: contentItem.id,
+      })
+      .returning();
+
+    for (const optionData of item.options) {
+      await db.insert(option).values({
+        text: optionData.text,
+        isCorrect: optionData.isCorrect,
+        explanation: optionData.explanation || "",
+        questionId: questionRecord.id,
+      });
+    }
+    questions++;
+  }
+
+  const [writtenContentItem] = await db
+    .insert(content)
+    .values({ type: "WRITTEN", order: order++, module_id: moduleId })
+    .returning();
+  await db.insert(written).values({
+    title: writtenTask.title,
+    prompt: writtenTask.prompt,
+    guidance: writtenTask.guidance ?? null,
+    module_id: moduleId,
+    content_item_id: writtenContentItem.id,
+  });
+
+  return { slides, questions, written: true };
 }
 
 /** Deterministic written task for when the AI call fails, so no module is left without practice. */
@@ -550,7 +406,6 @@ function buildFallbackWrittenTask(
     guidance:
       objectives.length > 0
         ? `A strong answer covers: ${objectives.slice(0, 3).join("; ")}.`
-        : "A strong answer states the core idea and supports it with one concrete example.",
+        : `A strong answer states the core idea and supports it with one concrete example.`,
   };
 }
-

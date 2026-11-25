@@ -9,8 +9,7 @@ import CreationSteps from "@/app/components/course/creation-steps";
 import GenerationView from "@/app/components/course/generation-view";
 import { CourseOutline } from "@/lib/course-ai-service";
 import { CourseFormData } from "../course-validation";
-import { createCourseFromOutline } from "@/lib/course-creation-service";
-import { describeGenerationError } from "@/lib/course-generation-error";
+import { useCourseBuild } from "@/app/components/course/use-course-build";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 const STEPS = ["Details", "Outline", "Create"] as const;
@@ -49,14 +48,14 @@ function ManualCourseCreationFlow() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("course-form");
   const [outline, setOutline] = useState<CourseOutline | null>(null);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [isBuilding, setIsBuilding] = useState(false);
   const [savedFormData, setSavedFormData] = useState<CourseFormData | null>(
     null
   );
+  const build = useCourseBuild();
 
   const stepIndex = STEP_INDEX[step];
   const isGenerating = step === "course-generation";
+  const isBuilding = build.isBuilding;
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -104,28 +103,14 @@ function ManualCourseCreationFlow() {
   const handleProceedToGeneration = async () => {
     if (!outline) return;
 
-    setGenerationError(null);
     setStep("course-generation");
-    setIsBuilding(true);
-
-    try {
-      const result = await createCourseFromOutline(outline);
-      if (result.success && result.course) {
-        router.push(`/course/edit/${result.course.id}`);
-        return;
-      }
-      setGenerationError(describeGenerationError(result.error));
-    } catch {
-      setGenerationError(
-        "The build stopped unexpectedly. Your outline is unchanged, so you can try again."
-      );
-    } finally {
-      setIsBuilding(false);
+    const result = await build.start(outline);
+    if (result.courseId && !result.error) {
+      router.push(`/course/edit/${result.courseId}`);
     }
   };
 
   const handleBack = () => {
-    setGenerationError(null);
     setStep(step === "course-generation" ? "outline-edit" : "course-form");
   };
 
@@ -195,10 +180,11 @@ function ManualCourseCreationFlow() {
 
         {step === "course-generation" && (
           <GenerationView
-            error={generationError}
+            error={build.error}
+            modules={build.modules}
+            phase={build.phase}
             onRetry={() => {
-              setGenerationError(null);
-              setStep("outline-edit");
+              void handleProceedToGeneration();
             }}
           />
         )}
